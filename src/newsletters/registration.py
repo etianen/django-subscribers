@@ -4,7 +4,6 @@ from weakref import WeakValueDictionary
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
-from django.db.models.signals import post_save, pre_delete
 
 from newsletters.models import has_int_pk, DispatchedEmail
 
@@ -103,6 +102,13 @@ class EmailManager(object):
             model.dispatchedemail_set = generic_relation
             generic_relation.contribute_to_class(model, "dispatchedemail_set")
     
+    def _assert_registered(self, model):
+        """Raises a registration error if the given model is not registered with this email manager."""
+        if not self.is_registered(model):
+            raise RegistrationError("{model!r} is not registered with this email manager".format(
+                model = model,
+            ))
+    
     def unregister(self, model):
         """
         Unregisters the given model with this email manager.
@@ -110,12 +116,7 @@ class EmailManager(object):
         If the given model is not registered with this email manager, a RegistrationError
         will be raised.
         """
-        # Check for registration.
-        if not self.is_registered(model):
-            raise RegistrationError("{model!r} is not registered with this email manager".format(
-                model = model,
-            ))
-        # Perform the unregistration.
+        self._assert_registered(model)
         del self._registered_models[model]
         
     def get_registered_models(self):
@@ -124,21 +125,14 @@ class EmailManager(object):
     
     def get_adapter(self, model):
         """Returns the adapter associated with the given model."""
-        if self.is_registered(model):
-            return self._registered_models[model]
-        raise RegistrationError("{model!r} is not registered with this email manager".format(
-            model = model,
-        ))
+        self._assert_registered(model)
+        return self._registered_models[model]
         
     # Dispatching email.
     
-    def dispatch_email(self, recipient, obj, from_address=None, reply_to_address=None):
+    def dispatch_email(self, recipient, obj, from_address="", reply_to_address=""):
         """Sends an email to the given recipient."""
-        # Check for registration.
-        if not self.is_registered(model):
-            raise RegistrationError("{model!r} is not registered with this email manager".format(
-                model = model,
-            ))
+        self._assert_registered(obj.__class__)
         # Determine the integer object id.
         if has_int_pk(obj):
             object_id_int = int(obj.pk)

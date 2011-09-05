@@ -4,7 +4,7 @@ from django.db import models
 from django.test import TestCase
 
 import newsletters
-from newsletters.models import Recipient
+from newsletters.models import Recipient, DispatchedEmail
 from newsletters.registration import RegistrationError
 
 
@@ -12,10 +12,6 @@ class TestModelBase(models.Model):
 
     subject = models.CharField(
         max_length = 200,
-    )
-    
-    content = models.TextField(
-        blank = True,
     )
         
     def __unicode__(self):
@@ -112,3 +108,24 @@ class RecipientTest(TestCase):
         finally:
             # Delete the recipient (cleanup).
             recipient.delete()
+            
+            
+class DispatchedEmailTest(TestCase):
+
+    def setUp(self):
+        newsletters.register(TestModel1)
+        newsletters.register(TestModel2)
+        self.email1 = TestModel1.objects.create(subject="Foo 1")
+        self.email2 = TestModel2.objects.create(subject="Foo 2")
+        self.recipient1 = Recipient.objects.signup(email="foo1@bar.com")
+        self.recipient2 = Recipient.objects.signup(email="foo2@bar.com")
+
+    def testDispatchEmail(self):
+        for email in (self.email1, self.email2):
+            for recipient in (self.recipient1, self.recipient2):
+                newsletters.dispatch_email(recipient, email)
+        self.assertEqual(DispatchedEmail.objects.filter(is_sent=False).count(), 4)
+        
+    def tearDown(self):
+        newsletters.unregister(TestModel1)
+        newsletters.unregister(TestModel2)
