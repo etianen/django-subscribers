@@ -3,6 +3,7 @@
 from django.db import models		
 from django.test import TestCase
 from django.core import mail
+from django.core.management import call_command
 
 import newsletters
 from newsletters.models import Recipient, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
@@ -146,6 +147,11 @@ class DispatchedEmailTest(TestCase):
         self.assertEqual(len(sent_emails), 0)
         self.assertEqual(len(mail.outbox), 4)
     
+    def testSendPartialBatch(self):
+        sent_emails = newsletters.send_email_batch(2)
+        self.assertEqual(len([email for email in sent_emails if email.status == STATUS_SENT]), 2)
+        self.assertEqual(len(mail.outbox), 2)
+    
     def testUnsubscribedEmailsNotSent(self):
         # Unsubscribe a recipient.
         self.recipient2.is_subscribed = False
@@ -163,6 +169,14 @@ class DispatchedEmailTest(TestCase):
         # Make sure they aren't sent twice.
         sent_emails = newsletters.send_email_batch()
         self.assertEqual(len(sent_emails), 0)
+        self.assertEqual(len(mail.outbox), 2)
+        
+    def testSendEmailBatchCommand(self):
+        call_command("sendemailbatch", verbosity=0)
+        self.assertEqual(len(mail.outbox), 4)
+        
+    def testSendEmailBatchCommandWithBatchSize(self):
+        call_command("sendemailbatch", "2", verbosity=0)
         self.assertEqual(len(mail.outbox), 2)
         
     def tearDown(self):

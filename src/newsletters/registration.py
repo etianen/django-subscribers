@@ -246,7 +246,7 @@ class EmailManager(object):
         Returns an iterator of dispatched emails, some or all of which will
         be flagged as is_sent.
         """
-        return list(self.send_email_batch_iter())
+        return list(self.send_email_batch_iter(batch_size))
 
 
 # The default email manager.
