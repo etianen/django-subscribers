@@ -2,6 +2,7 @@
 
 from django.db import models		
 from django.test import TestCase
+from django.conf.urls.defaults import *
 from django.core import mail
 from django.core.management import call_command
 
@@ -182,3 +183,49 @@ class DispatchedEmailTest(TestCase):
     def tearDown(self):
         newsletters.unregister(TestModel1)
         newsletters.unregister(TestModel2)
+
+
+# Tests that require a url conf.
+
+urlpatterns = patterns("",
+
+    url("^newsletters/", include("newsletters.urls")),
+
+)
+        
+        
+class UnsubscribeTest(TestCase):
+
+    urls = "newsletters.tests"
+    
+    def setUp(self):
+        newsletters.register(TestModel1)
+        newsletters.register(TestModel2)
+        self.email1 = TestModel1.objects.create(subject="Foo 1")
+        self.email2 = TestModel2.objects.create(subject="Foo 1")
+        self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
+        
+    def testUnsubscribeWorkflow(self):
+        for email in (self.email1, self.email2):
+            params = newsletters.get_adapter(TestModel1).get_template_params(email, self.recipient1)
+            unsubscribe_url = params["unsubscribe_url"]
+            self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
+            # Attempt to unsubscribe from an email that was never dispatched.
+            response = self.client.get(unsubscribe_url)
+            self.assertEqual(response.status_code, 404)
+            # Dispatch the email.
+            newsletters.dispatch_email(email, self.recipient1)
+            # Attempt to unsubscribe from an email that was never sent.
+            response = self.client.get(unsubscribe_url)
+            self.assertEqual(response.status_code, 404)        
+            # Send the emails.
+            sent_emails = newsletters.send_email_batch()
+            # Try to unsubscribe again.
+            response = self.client.get(unsubscribe_url)
+            self.assertEqual(response.status_code, 200)
+            response = self.client.post(unsubscribe_url)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response["Location"], "/newsletters/unsubscribe/success/")
+    
+    def tearDown(self):
+        newsletters.unregister(TestModel1)

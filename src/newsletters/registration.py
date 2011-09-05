@@ -7,8 +7,9 @@ from django import template
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from django.core.mail import EmailMultiAlternatives, get_connection
+from django.core.urlresolvers import reverse, NoReverseMatch
 
-from newsletters.models import has_int_pk, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
+from newsletters.models import has_int_pk, get_secure_hash, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
 
 
 class EmailAdapter(object):
@@ -38,11 +39,26 @@ class EmailAdapter(object):
         
     def get_template_params(self, obj, recipient):
         """Returns the template params for the email this object represents."""
-        return {
+        # Get the base params.
+        params = {
             "obj": obj,
             "subject": self.get_subject(obj, recipient),
             "recipient": recipient,
         }
+        # Add in the unsubscribe url.
+        try:
+            unsubscribe_url = reverse("newsletters.views.unsubscribe", args=(
+                ContentType.objects.get_for_model(obj).id,
+                obj.pk,
+                recipient.pk,
+                get_secure_hash(obj, recipient),
+            ))
+        except NoReverseMatch:
+            pass
+        else:
+            params["unsubscribe_url"] = unsubscribe_url
+        # All done.
+        return params
     
     def get_content(self, obj, recipient):
         """Returns the plain text content of the email that this object represents."""
@@ -85,7 +101,7 @@ class RegistrationError(EmailManagerError):
 
 class EmailManager(object):
 
-    """An email manager used to register."""
+    """An email manager used to register email adapters."""
     
     _created_managers = WeakValueDictionary()
     

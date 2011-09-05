@@ -1,5 +1,8 @@
 """Models used by django-newsletters."""
 
+import hashlib
+
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from django.db import models
@@ -134,6 +137,20 @@ STATUS_CHOICES = (
 )
 
 
+def get_secure_hash(obj, recipient):
+    """
+    Returns a secure hash that can be used to identify the recipient
+    of the email email obj.
+    """
+    return hashlib.sha1(
+        "$".join((
+            settings.SECRET_KEY,
+            unicode(obj.pk).encode("utf-8"),
+            str(recipient.pk),
+        ))
+    ).hexdigest()
+
+
 class DispatchedEmail(models.Model):
 
     """A batch mailing task."""
@@ -145,14 +162,18 @@ class DispatchedEmail(models.Model):
     date_modified = models.DateTimeField(
         auto_now = True,
     )
-
-    content_type = models.ForeignKey(
-        ContentType,
-    )
     
     manager_slug = models.CharField(
         db_index = True,
         max_length = 200,
+    )
+    
+    salt = models.CharField(
+        max_length = 40,
+    )
+    
+    content_type = models.ForeignKey(
+        ContentType,
     )
     
     object_id = models.TextField()
