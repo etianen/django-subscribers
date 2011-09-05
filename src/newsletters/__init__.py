@@ -17,3 +17,7 @@ unregister = default_email_manager.unregister
 is_registered = default_email_manager.is_registered
 get_registered_models = default_email_manager.get_registered_models
 get_adapter = default_email_manager.get_adapter
+
+
+# Dispatching email.
+dispatch_email = default_email_manager.dispatch_email

@@ -84,3 +84,31 @@ class RecipientTest(TestCase):
             last_name = "Bar",
             email = "foo@bar.com",
         )), "Foo Bar <foo@bar.com>")
+        
+    def testRecipientSignup(self):
+        # Test that the recipient is created.
+        recipient = Recipient.objects.signup(email="foo@bar.com")
+        try:
+            self.assertEqual(recipient.email, "foo@bar.com")
+            self.assertTrue(recipient.pk)
+            self.assertTrue(recipient.is_subscribed)
+            # Test that the recipient can be updated.
+            recipient = Recipient.objects.signup(email="foo@bar.com", first_name="Foo", last_name="Bar")
+            self.assertEqual(recipient.first_name, "Foo")
+            self.assertEqual(recipient.last_name, "Bar")
+            # Test that there is still only one recipient.
+            self.assertEqual(Recipient.objects.count(), 1)
+            # Test that the recipient can be resubscribed.
+            recipient.is_subscribed = False
+            recipient.save()
+            self.assertFalse(recipient.is_subscribed)
+            recipient = Recipient.objects.signup(email="foo@bar.com")
+            self.assertTrue(recipient.is_subscribed)
+            # Test that there is still only one recipient.
+            self.assertEqual(Recipient.objects.count(), 1)
+            # Test that the stored name data is not overidden with blanks.
+            self.assertEqual(recipient.first_name, "Foo")
+            self.assertEqual(recipient.last_name, "Bar")
+        finally:
+            # Delete the recipient (cleanup).
+            recipient.delete()

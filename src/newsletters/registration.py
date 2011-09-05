@@ -2,6 +2,7 @@
 
 from weakref import WeakValueDictionary
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 from django.db.models.signals import post_save, pre_delete
 
@@ -15,6 +16,22 @@ class EmailAdapter(object):
     def __init__(self, model):
         """Initializes the email adapter."""
         self.model = model
+        
+    def get_subject(self, obj):
+        """Returns the subject for the email that this object represents."""
+        return unicode(obj)
+    
+    def get_content(self, obj):
+        """Returns the plain text content of the email that this object represents."""
+        return unicode(obj)
+        
+    def get_content_html(self, obj):
+        """
+        Returns the HTML content of the email that this object represents.
+        
+        If None, then the email will be plain text only.
+        """
+        return None        
 
 
 class EmailManagerError(Exception):
@@ -112,6 +129,31 @@ class EmailManager(object):
         raise RegistrationError("{model!r} is not registered with this email manager".format(
             model = model,
         ))
+        
+    # Dispatching email.
+    
+    def dispatch_email(self, recipient, obj, from_address=None, reply_to_address=None):
+        """Sends an email to the given recipient."""
+        # Check for registration.
+        if not self.is_registered(model):
+            raise RegistrationError("{model!r} is not registered with this email manager".format(
+                model = model,
+            ))
+        # Determine the integer object id.
+        if has_int_pk(obj):
+            object_id_int = int(obj.pk)
+        else:
+            object_id_int = None
+        # Save the dispatched email.
+        return DispatchedEmail.objects.create(
+            manager_slug = self._manager_slug,
+            content_type = ContentType.objects.get_for_model(obj),
+            object_id = unicode(obj.pk),
+            object_id_int = object_id_int,
+            recipient = recipient,
+            from_address = from_address,
+            reply_to_address = reply_to_address,
+        )
         
 
 # The default email manager.

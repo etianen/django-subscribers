@@ -35,11 +35,33 @@ class MailingList(models.Model):
         
     class Meta:
         ordering = ("name",)
+        
+        
+class RecipientManager(models.Manager):
+
+    """Manager for the recipient model."""
+    
+    def signup(self, email, first_name=None, last_name=None):
+        """Signs up the given recipient."""
+        # Get the recipient.
+        try:
+            recipient = self.get(email=email)
+        except self.model.DoesNotExist:
+            recipient = Recipient(email=email)
+        # Update the params.
+        recipient.first_name = first_name or recipient.first_name
+        recipient.last_name = last_name or recipient.last_name
+        recipient.is_subscribed = True
+        # Save the model.
+        recipient.save()
+        return recipient
 
 
 class Recipient(models.Model):
 
     """A known email address."""
+    
+    objects = RecipientManager()
 
     date_created = models.DateTimeField(
         auto_now_add = True,
@@ -129,7 +151,21 @@ class DispatchedEmail(models.Model):
         Recipient,
     )
     
+    from_address = models.CharField(
+        max_length = 200,
+        blank = True,
+    )
+    
+    reply_to_address = models.CharField(
+        max_length = 200,
+        blank = True,
+    )
+    
     is_sent = models.BooleanField(
         default = False,
         db_index = True,
     )
+    
+    def __unicode__(self):
+        """Returns a unicode representation."""
+        return unicode(self.object)
