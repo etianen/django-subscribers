@@ -2,6 +2,7 @@
 
 from weakref import WeakValueDictionary
 
+from django.contrib.contenttypes import generic
 from django.db.models.signals import post_save, pre_delete
 
 from newsletters.models import has_int_pk, DispatchedEmail
@@ -79,7 +80,7 @@ class EmailManager(object):
             else:
                 object_id_field = "object_id"
             generic_relation = generic.GenericRelation(
-                SentEmail,
+                DispatchedEmail,
                 object_id_field = object_id_field,
             )
             model.dispatchedemail_set = generic_relation
