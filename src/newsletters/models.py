@@ -5,6 +5,14 @@ from django.contrib.contenttypes import generic
 from django.db import models
 
 
+def has_int_pk(model):
+    """Tests whether the given model has an integer primary key."""
+    return (
+        isinstance(model._meta.pk, (models.IntegerField, models.AutoField)) and
+        not isinstance(model._meta.pk, models.BigIntegerField)
+    )
+
+
 class MailingList(models.Model):
 
     """A list of recipients."""
@@ -89,7 +97,7 @@ class Recipient(models.Model):
         ordering = ("email",)
 
 
-class EmailTask(models.Model):
+class DispatchedEmail(models.Model):
 
     """A batch mailing task."""
 
@@ -102,8 +110,17 @@ class EmailTask(models.Model):
         ContentType,
     )
     
-    object_id = models.IntegerField(
+    manager_slug = models.CharField(
         db_index = True,
+        max_length = 200,
+    )
+    
+    object_id = models.TextField()
+    
+    object_id_int = models.IntegerField(
+        db_index = True,
+        blank = True,
+        null = True,
     )
     
     object = generic.GenericForeignKey()
