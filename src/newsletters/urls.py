@@ -7,6 +7,6 @@ urlpatterns = patterns("newsletters.views",
 
     url("^unsubscribe/([^-]+)-([^-]+)-([^-]+)-([^/]+)/$", "unsubscribe", name="unsubscribe"),
     
-    url("^unsubscribe/success/$", "unsubscribe_success", name="unsubscribe_success"),
+    url("^unsubscribe/([^-]+)-([^-]+)-([^-]+)-([^/]+)/success/$", "unsubscribe_success", name="unsubscribe_success"),
 
 )

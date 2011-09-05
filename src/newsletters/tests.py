@@ -233,9 +233,9 @@ class UnsubscribeTest(TestCase):
             # Try to unsubscribe again.
             response = self.client.get(unsubscribe_url)
             self.assertEqual(response.status_code, 200)
-            response = self.client.post(unsubscribe_url)
-            self.assertEqual(response.status_code, 302)
-            self.assertEqual(response["Location"], "http://testserver/newsletters/unsubscribe/success/")
+            response = self.client.post(unsubscribe_url, follow=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, "newsletters/unsubscribe_success.html")
             # See if the unsubscribe worked.
             self.assertFalse(Recipient.objects.get(id=self.recipient1.id).is_subscribed)
             # Re-subscribe the user.
