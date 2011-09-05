@@ -1,11 +1,14 @@
 """Adapters for registering models with django-newsletters."""
 
 from weakref import WeakValueDictionary
+from contextlib import closing
 
+from django import template
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
+from django.core.mail import EmailMultiAlternatives, get_connection
 
-from newsletters.models import has_int_pk, DispatchedEmail
+from newsletters.models import has_int_pk, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
 
 
 class EmailAdapter(object):
@@ -16,21 +19,58 @@ class EmailAdapter(object):
         """Initializes the email adapter."""
         self.model = model
         
-    def get_subject(self, obj):
+    def get_subject(self, obj, recipient):
         """Returns the subject for the email that this object represents."""
         return unicode(obj)
     
-    def get_content(self, obj):
+    def _get_template_name(self, obj, template_name):
+        """Gets the appropriate fallback template name."""
+        return [
+            template_path.format(
+                app_label = obj._meta.app_label,
+                model = obj.__class__.__name__.lower(),
+            ) for template_path in (
+                "newsletters/{app_label}/{model}/email.txt",
+                "newsletters/{app_label}/email.txt",
+                "newsletters/email.txt",
+            )
+        ]
+        
+    def get_template_params(self, obj, recipient):
+        """Returns the template params for the email this object represents."""
+        return {
+            "obj": obj,
+            "subject": self.get_subject(obj, recipient),
+            "recipient": recipient,
+        }
+    
+    def get_content(self, obj, recipient):
         """Returns the plain text content of the email that this object represents."""
-        return unicode(obj)
+        return template.loader.render_to_string(
+            self._get_template_name(obj, "email.txt"),
+            self.get_template_params(obj, recipient),
+        )
         
-    def get_content_html(self, obj):
-        """
-        Returns the HTML content of the email that this object represents.
+    def get_content_html(self, obj, recipient):
+        """Returns the HTML content of the email that this object represents."""
+        return template.loader.render_to_string(
+            self._get_template_name(obj, "email.txt"),
+            self.get_template_params(obj, recipient),
+        )
         
-        If None, then the email will be plain text only.
-        """
-        return None        
+    def render_email(self, obj, recipient):
+        """Renders this object to an email."""
+        # Render the content.
+        content_html = self.get_content_html(obj, recipient)
+        # Create the email.
+        email = EmailMultiAlternatives(
+            subject = self.get_subject(obj, recipient),
+            body = self.get_content(obj, recipient),
+            to = (unicode(recipient),)
+        )
+        email.attach_alternative(content_html, "text/html")
+        # All done.
+        return email
 
 
 class EmailManagerError(Exception):
@@ -130,7 +170,7 @@ class EmailManager(object):
         
     # Dispatching email.
     
-    def dispatch_email(self, recipient, obj, from_address="", reply_to_address=""):
+    def dispatch_email(self, obj, recipient, from_email="", reply_to_email=""):
         """Sends an email to the given recipient."""
         self._assert_registered(obj.__class__)
         # Determine the integer object id.
@@ -145,10 +185,69 @@ class EmailManager(object):
             object_id = unicode(obj.pk),
             object_id_int = object_id_int,
             recipient = recipient,
-            from_address = from_address,
-            reply_to_address = reply_to_address,
+            from_email = from_email,
+            reply_to_email = reply_to_email,
         )
         
+    def send_email_batch_iter(self, batch_size=None):
+        """
+        Sends a batch of emails.
+        
+        Returns an iterator of dispatched emails, some or all of which will
+        be flagged as sent.
+        """
+        # Look up the emails to send.
+        dispatched_emails = DispatchedEmail.objects.filter(
+            manager_slug = self._manager_slug,
+            status = STATUS_PENDING,
+        ).select_related("recipient")
+        if batch_size is not None:
+            dispatched_emails = dispatched_emails[:batch_size]
+        # Aquire a connection.
+        if dispatched_emails:
+            with closing(get_connection()) as connection:
+                connection.open()
+                # Send the emails.
+                for dispatched_email in dispatched_emails:
+                    if dispatched_email.recipient.is_subscribed:
+                        content_type = ContentType.objects.get_for_id(dispatched_email.content_type_id)
+                        model = content_type.model_class()
+                        try:
+                            obj = model._default_manager.get(pk=dispatched_email.object_id)
+                        except model.DoesNotExist:
+                            dispatched_email.status = STATUS_CANCELLED
+                        else:
+                            adapter = self.get_adapter(model)
+                            # Generate the email.
+                            email = adapter.render_email(obj, dispatched_email.recipient)
+                            email.connection = connection
+                            if dispatched_email.from_email:
+                                email.from_email = dispatched_email.from_email
+                            if dispatched_email.reply_to_email:
+                                email.headers["Reply-To"] = dispatched_email.reply_to_email
+                            # Try to send the email.
+                            try:
+                                email.send()
+                            except Exception as ex:
+                                dispatched_email.status = STATUS_ERROR
+                                dispatched_email.status_message = str(ex)
+                            else:
+                                dispatched_email.status = STATUS_SENT
+                    else:
+                        dispatched_email.status = STATUS_UNSUBSCRIBED
+                    # Save the result.
+                    dispatched_email.save()
+                    yield dispatched_email
+    
+    def send_email_batch(self, batch_size=None):
+        """
+        Sends a batch of emails.
+        
+        Returns an iterator of dispatched emails, some or all of which will
+        be flagged as is_sent.
+        """
+        return list(self.send_email_batch_iter())
+
 
 # The default email manager.
 default_email_manager = EmailManager("default")

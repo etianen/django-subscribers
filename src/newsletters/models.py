@@ -41,7 +41,7 @@ class RecipientManager(models.Manager):
 
     """Manager for the recipient model."""
     
-    def signup(self, email, first_name=None, last_name=None):
+    def subscribe(self, email, first_name=None, last_name=None):
         """Signs up the given recipient."""
         # Get the recipient.
         try:
@@ -119,13 +119,31 @@ class Recipient(models.Model):
         ordering = ("email",)
 
 
+STATUS_PENDING = 0
+STATUS_SENT = 1
+STATUS_CANCELLED = 2
+STATUS_UNSUBSCRIBED = 3
+STATUS_ERROR = 4
+
+STATUS_CHOICES = (
+    (STATUS_PENDING, "Pending"),
+    (STATUS_SENT, "Sent"),
+    (STATUS_CANCELLED, "Cancelled"),
+    (STATUS_UNSUBSCRIBED, "Unsubscribed"),
+    (STATUS_ERROR, "Error"),
+)
+
+
 class DispatchedEmail(models.Model):
 
     """A batch mailing task."""
 
     date_created = models.DateTimeField(
         auto_now_add = True,
-        db_index = True,
+    )
+    
+    date_modified = models.DateTimeField(
+        auto_now = True,
     )
 
     content_type = models.ForeignKey(
@@ -151,21 +169,29 @@ class DispatchedEmail(models.Model):
         Recipient,
     )
     
-    from_address = models.CharField(
+    from_email = models.CharField(
         max_length = 200,
         blank = True,
     )
     
-    reply_to_address = models.CharField(
+    reply_to_email = models.CharField(
         max_length = 200,
         blank = True,
     )
     
-    is_sent = models.BooleanField(
-        default = False,
+    status = models.IntegerField(
+        default = STATUS_PENDING,
+        choices = STATUS_CHOICES,
         db_index = True,
+    )
+    
+    status_message = models.TextField(
+        blank = True,
     )
     
     def __unicode__(self):
         """Returns a unicode representation."""
         return unicode(self.object)
+        
+    class Meta:
+        ordering = ("id",)

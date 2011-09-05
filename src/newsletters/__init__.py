@@ -21,3 +21,5 @@ get_adapter = default_email_manager.get_adapter
 
 # Dispatching email.
 dispatch_email = default_email_manager.dispatch_email
+send_email_batch_iter = default_email_manager.send_email_batch_iter
+send_email_batch = default_email_manager.send_email_batch
