@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.conf.urls.defaults import *
 from django.core import mail
 from django.core.management import call_command
+from django import template
 
 import newsletters
 from newsletters.models import Recipient, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
@@ -204,20 +205,29 @@ class UnsubscribeTest(TestCase):
         self.email1 = TestModel1.objects.create(subject="Foo 1")
         self.email2 = TestModel2.objects.create(subject="Foo 1")
         self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
+    
+    def assert404(self, callable):
+        try:
+            response = callable()
+        except template.TemplateDoesNotExist as ex:
+            self.assertEqual(ex.args[0], "404.html")
+        else:
+            self.assertEqual(response.status_code, 404)
+            self.assertTemplateUsed(response, "404.html")
         
     def testUnsubscribeWorkflow(self):
         for email in (self.email1, self.email2):
+            self.assertTrue(Recipient.objects.get(id=self.recipient1.id).is_subscribed)
+            # Get the unsubscribe URL.
             params = newsletters.get_adapter(TestModel1).get_template_params(email, self.recipient1)
             unsubscribe_url = params["unsubscribe_url"]
             self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
             # Attempt to unsubscribe from an email that was never dispatched.
-            response = self.client.get(unsubscribe_url)
-            self.assertEqual(response.status_code, 404)
+            self.assert404(lambda: self.client.get(unsubscribe_url))
             # Dispatch the email.
             newsletters.dispatch_email(email, self.recipient1)
             # Attempt to unsubscribe from an email that was never sent.
-            response = self.client.get(unsubscribe_url)
-            self.assertEqual(response.status_code, 404)        
+            self.assert404(lambda: self.client.get(unsubscribe_url))
             # Send the emails.
             sent_emails = newsletters.send_email_batch()
             # Try to unsubscribe again.
@@ -225,7 +235,11 @@ class UnsubscribeTest(TestCase):
             self.assertEqual(response.status_code, 200)
             response = self.client.post(unsubscribe_url)
             self.assertEqual(response.status_code, 302)
-            self.assertEqual(response["Location"], "/newsletters/unsubscribe/success/")
+            self.assertEqual(response["Location"], "http://testserver/newsletters/unsubscribe/success/")
+            # See if the unsubscribe worked.
+            self.assertFalse(Recipient.objects.get(id=self.recipient1.id).is_subscribed)
+            # Re-subscribe the user.
+            self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
     
     def tearDown(self):
         newsletters.unregister(TestModel1)
