@@ -23,9 +23,9 @@ class RecipientAdmin(AdminBase):
 
     date_hierarchy = "date_created"
 
-    list_display = ("email", "first_name", "last_name", "date_created",)
+    list_display = ("email", "first_name", "last_name", "is_subscribed", "date_created",)
     
-    list_filter = ("mailing_lists",)
+    list_filter = ("is_subscribed", "mailing_lists",)
     
     filter_horizontal = ("mailing_lists",)
     
