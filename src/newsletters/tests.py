@@ -6,6 +6,7 @@ from django.conf.urls.defaults import *
 from django.core import mail
 from django.core.management import call_command
 from django import template
+from django.http import HttpResponseNotFound, HttpResponseServerError
 
 import newsletters
 from newsletters.models import Recipient, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
@@ -193,6 +194,13 @@ urlpatterns = patterns("",
     url("^newsletters/", include("newsletters.urls")),
 
 )
+
+def handler404(request):
+    return HttpResponseNotFound("Not found")
+    
+    
+def handler500(request):
+    return HttpResponseServerError("Server error")
         
         
 class UnsubscribeTest(TestCase):
@@ -205,15 +213,6 @@ class UnsubscribeTest(TestCase):
         self.email1 = TestModel1.objects.create(subject="Foo 1")
         self.email2 = TestModel2.objects.create(subject="Foo 1")
         self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
-    
-    def assert404(self, callable):
-        try:
-            response = callable()
-        except template.TemplateDoesNotExist as ex:
-            self.assertEqual(ex.args[0], "404.html")
-        else:
-            self.assertEqual(response.status_code, 404)
-            self.assertTemplateUsed(response, "404.html")
         
     def testUnsubscribeWorkflow(self):
         for email in (self.email1, self.email2):
@@ -223,11 +222,11 @@ class UnsubscribeTest(TestCase):
             unsubscribe_url = params["unsubscribe_url"]
             self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
             # Attempt to unsubscribe from an email that was never dispatched.
-            self.assert404(lambda: self.client.get(unsubscribe_url))
+            self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
             # Dispatch the email.
             newsletters.dispatch_email(email, self.recipient1)
             # Attempt to unsubscribe from an email that was never sent.
-            self.assert404(lambda: self.client.get(unsubscribe_url))
+            self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
             # Send the emails.
             sent_emails = newsletters.send_email_batch()
             # Try to unsubscribe again.
