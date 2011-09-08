@@ -239,13 +239,13 @@ class MailingListAdminTest(TestCase):
         # Test a subscription.
         response = self.client.get("/admin/newsletters/mailinglist/")
         self.assertContains(response, "Foo list")
-        self.assertContains(response, "1")
+        self.assertContains(response, "<td>1</td>")
         # Test an unsubscription.
         self.recipient.is_subscribed = False
         self.recipient.save()
         response = self.client.get("/admin/newsletters/mailinglist/")
         self.assertContains(response, "Foo list")
-        self.assertContains(response, "0")
+        self.assertContains(response, "<td>0</td>")
         
         
 class UnsubscribeTest(TestCase):
