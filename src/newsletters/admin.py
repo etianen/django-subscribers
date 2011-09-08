@@ -47,11 +47,21 @@ class RecipientAdmin(AdminBase):
     def subscribe_selected(self, request, qs):
         """Subscribes the selected recipients."""
         qs.update(is_subscribed=True)
+        count = qs.count()
+        self.message_user(request, u"{count} {item} marked as subscribed.".format(
+            count = count,
+            item = count != 1 and "recipients were" or "recipient was",
+        ))
     subscribe_selected.short_description = "Mark selected recipients as subscribed"
     
     def unsubscribe_selected(self, request, qs):
         """Unsubscribes the selected recipients."""
         qs.update(is_subscribed=False)
+        count = qs.count()
+        self.message_user(request, u"{count} {item} marked as unsubscribed.".format(
+            count = count,
+            item = count != 1 and "recipients were" or "recipient was",
+        ))
     unsubscribe_selected.short_description = "Mark selected recipients as unsubscribed"
     
     def add_selected_to_mailing_list(self, request, qs, mailing_list):
