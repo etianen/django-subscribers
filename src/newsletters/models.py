@@ -99,8 +99,8 @@ class Recipient(models.Model):
     )
     
     is_subscribed = models.BooleanField(
+        "subscribed",
         default = True,
-        db_index = True,
     )
     
     mailing_lists = models.ManyToManyField(

@@ -3,13 +3,16 @@
 from django.db import models		
 from django.test import TestCase
 from django.conf.urls.defaults import *
+from django.contrib import admin
+from django.contrib.auth.models import User
 from django.core import mail
 from django.core.management import call_command
 from django import template
 from django.http import HttpResponseNotFound, HttpResponseServerError
 
 import newsletters
-from newsletters.models import Recipient, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
+from newsletters.admin import RecipientAdmin, MailingListAdmin
+from newsletters.models import Recipient, MailingList, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
 from newsletters.registration import RegistrationError
 
 
@@ -189,7 +192,15 @@ class DispatchedEmailTest(TestCase):
 
 # Tests that require a url conf.
 
+
+admin_site = admin.AdminSite()
+admin_site.register(Recipient, RecipientAdmin)
+admin_site.register(MailingList, MailingListAdmin)
+
+
 urlpatterns = patterns("",
+    
+    url("^admin/", include(admin_site.urls)),
 
     url("^newsletters/", include("newsletters.urls")),
 
@@ -201,6 +212,40 @@ def handler404(request):
     
 def handler500(request):
     return HttpResponseServerError("Server error")
+
+
+class MailingListAdminTest(TestCase):
+
+    def setUp(self):
+        # Create an admin user.
+        self.user = User(
+            username = "foo",
+            is_staff = True,
+            is_superuser = True,
+        )
+        self.user.set_password("bar")
+        self.user.save()
+        self.client.login(username="foo", password="bar")
+        # Create a recipient and a mailing list.
+        self.recipient = Recipient.objects.create(
+            email = "foo@bar.com",
+        )
+        self.mailing_list = MailingList.objects.create(
+            name = "Foo list",
+        )
+        self.recipient.mailing_lists.add(self.mailing_list)
+        
+    def testMailingListSubscriberCount(self):
+        # Test a subscription.
+        response = self.client.get("/admin/newsletters/mailinglist/")
+        self.assertContains(response, "Foo list")
+        self.assertContains(response, "1")
+        # Test an unsubscription.
+        self.recipient.is_subscribed = False
+        self.recipient.save()
+        response = self.client.get("/admin/newsletters/mailinglist/")
+        self.assertContains(response, "Foo list")
+        self.assertContains(response, "0")
         
         
 class UnsubscribeTest(TestCase):

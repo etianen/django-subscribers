@@ -25,7 +25,7 @@ class Migration(SchemaMigration):
             ('email', self.gf('django.db.models.fields.EmailField')(unique=True, max_length=75)),
             ('first_name', self.gf('django.db.models.fields.CharField')(max_length=200, blank=True)),
             ('last_name', self.gf('django.db.models.fields.CharField')(max_length=200, blank=True)),
-            ('is_subscribed', self.gf('django.db.models.fields.BooleanField')(default=True, db_index=True)),
+            ('is_subscribed', self.gf('django.db.models.fields.BooleanField')(default=True)),
         ))
         db.send_create_signal('newsletters', ['Recipient'])
 
