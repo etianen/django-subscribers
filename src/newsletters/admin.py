@@ -68,11 +68,23 @@ class RecipientAdmin(AdminBase):
         """Adds the selected recipients to a mailing list."""
         for recipient in qs:
             recipient.mailing_lists.add(mailing_list)
+        count = len(qs)
+        self.message_user(request, u"{count} {item} were added to {mailing_list}.".format(
+            count = count,
+            item = count != 1 and "recipients were" or "recipient was",
+            mailing_list = mailing_list,
+        ))
             
     def remove_selected_from_mailing_list(self, request, qs, mailing_list):
         """Removes the selected recipients from a mailing list."""
         for recipient in qs:
             recipient.mailing_lists.remove(mailing_list)
+        count = len(qs)
+        self.message_user(request, u"{count} {item} were removed from {mailing_list}.".format(
+            count = count,
+            item = count != 1 and "recipients were" or "recipient was",
+            mailing_list = mailing_list,
+        ))
     
     def get_actions(self, request):
         """Returns the actions this admin class supports."""
