@@ -1,5 +1,7 @@
 """Admin integration for newsletters."""
 
+from functools import partial
+
 from django.conf import settings
 from django.contrib import admin
 from django.db.models import Count
@@ -23,7 +25,7 @@ class RecipientAdmin(AdminBase):
 
     date_hierarchy = "date_created"
 
-    actions = ("subscribe_action", "unsubscribe_action",)
+    actions = ("subscribe_selected", "unsubscribe_selected",)
 
     list_display = ("email", "first_name", "last_name", "is_subscribed", "date_created",)
     
@@ -42,15 +44,61 @@ class RecipientAdmin(AdminBase):
     
     # Custom actions.
     
-    def subscribe_action(self, request, qs):
+    def subscribe_selected(self, request, qs):
         """Subscribes the selected recipients."""
         qs.update(is_subscribed=True)
-    subscribe_action.short_description = "Mark selected recipients as subscribed"
+    subscribe_selected.short_description = "Mark selected recipients as subscribed"
     
-    def unsubscribe_action(self, request, qs):
+    def unsubscribe_selected(self, request, qs):
         """Unsubscribes the selected recipients."""
         qs.update(is_subscribed=False)
-    unsubscribe_action.short_description = "Mark selected recipients as unsubscribed"
+    unsubscribe_selected.short_description = "Mark selected recipients as unsubscribed"
+    
+    def add_selected_to_mailing_list(self, request, qs, mailing_list):
+        """Adds the selected recipients to a mailing list."""
+        for recipient in qs:
+            recipient.mailing_lists.add(mailing_list)
+            
+    def remove_selected_from_mailing_list(self, request, qs, mailing_list):
+        """Removes the selected recipients from a mailing list."""
+        for recipient in qs:
+            recipient.mailing_lists.remove(mailing_list)
+    
+    def get_actions(self, request):
+        """Returns the actions this admin class supports."""
+        actions = super(RecipientAdmin, self).get_actions(request)
+        # Add in the mailing list actions.
+        mailing_lists = [
+            (unicode(mailing_list).replace(" ", "_").lower(), mailing_list)
+            for mailing_list
+            in MailingList.objects.all()
+        ]
+        # Create the add actions.
+        for mailing_list_slug, mailing_list in mailing_lists:
+            add_action_name = u"add_selected_to_{mailing_list_slug}".format(
+                mailing_list_slug = mailing_list_slug,
+            )
+            actions[add_action_name] = (
+                partial(self.__class__.add_selected_to_mailing_list, mailing_list=mailing_list),
+                add_action_name,
+                "Add selected recipients to {mailing_list}".format(
+                    mailing_list = mailing_list,
+                ),
+            )
+        # Create the remove actions.
+        for mailing_list_slug, mailing_list in mailing_lists:
+            remove_action_name = u"remove_selected_from_{mailing_list_slug}".format(
+                mailing_list_slug = mailing_list_slug,
+            )
+            actions[remove_action_name] = (
+                partial(self.__class__.remove_selected_from_mailing_list, mailing_list=mailing_list),
+                remove_action_name,
+                "Remove selected recipients from {mailing_list}".format(
+                    mailing_list = mailing_list,
+                ),
+            )
+        # All done!
+        return actions
     
     
 admin.site.register(Recipient, RecipientAdmin)
