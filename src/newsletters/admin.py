@@ -23,6 +23,8 @@ class RecipientAdmin(AdminBase):
 
     date_hierarchy = "date_created"
 
+    actions = ("subscribe_action", "unsubscribe_action",)
+
     list_display = ("email", "first_name", "last_name", "is_subscribed", "date_created",)
     
     list_filter = ("is_subscribed", "mailing_lists",)
@@ -37,6 +39,18 @@ class RecipientAdmin(AdminBase):
             "fields": ("mailing_lists",),
         }),
     )
+    
+    # Custom actions.
+    
+    def subscribe_action(self, request, qs):
+        """Subscribes the selected recipients."""
+        qs.update(is_subscribed=True)
+    subscribe_action.short_description = "Mark selected recipients as subscribed"
+    
+    def unsubscribe_action(self, request, qs):
+        """Unsubscribes the selected recipients."""
+        qs.update(is_subscribed=False)
+    unsubscribe_action.short_description = "Mark selected recipients as unsubscribed"
     
     
 admin.site.register(Recipient, RecipientAdmin)

@@ -20,7 +20,7 @@ class Migration(SchemaMigration):
         # Adding model 'Recipient'
         db.create_table('newsletters_recipient', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
+            ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, db_index=True, blank=True)),
             ('date_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
             ('email', self.gf('django.db.models.fields.EmailField')(unique=True, max_length=75)),
             ('first_name', self.gf('django.db.models.fields.CharField')(max_length=200, blank=True)),
@@ -100,12 +100,12 @@ class Migration(SchemaMigration):
         },
         'newsletters.recipient': {
             'Meta': {'ordering': "('email',)", 'object_name': 'Recipient'},
-            'date_created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
+            'date_created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'db_index': 'True', 'blank': 'True'}),
             'date_modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'email': ('django.db.models.fields.EmailField', [], {'unique': 'True', 'max_length': '75'}),
             'first_name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'is_subscribed': ('django.db.models.fields.BooleanField', [], {'default': 'True', 'db_index': 'True'}),
+            'is_subscribed': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'blank': 'True'}),
             'mailing_lists': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['newsletters.MailingList']", 'symmetrical': 'False', 'blank': 'True'})
         }
