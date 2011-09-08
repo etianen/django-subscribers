@@ -36,6 +36,23 @@ class EmailAdapter(object):
                 "newsletters/email.txt",
             )
         ]
+    
+    def get_unsubscribe_url(self, obj, recipient):
+        """
+        Returns the unsubscribe URL for the email this object represents.
+        
+        If it returns None, then no unsubscribe URL will be available in the
+        template params.
+        """
+        try:
+            return reverse("newsletters.views.unsubscribe", args=(
+                ContentType.objects.get_for_model(obj).id,
+                obj.pk,
+                recipient.pk,
+                get_secure_hash(obj, recipient),
+            ))
+        except NoReverseMatch:
+            return None
         
     def get_template_params(self, obj, recipient):
         """Returns the template params for the email this object represents."""
@@ -46,16 +63,8 @@ class EmailAdapter(object):
             "recipient": recipient,
         }
         # Add in the unsubscribe url.
-        try:
-            unsubscribe_url = reverse("newsletters.views.unsubscribe", args=(
-                ContentType.objects.get_for_model(obj).id,
-                obj.pk,
-                recipient.pk,
-                get_secure_hash(obj, recipient),
-            ))
-        except NoReverseMatch:
-            pass
-        else:
+        unsubscribe_url = self.get_unsubscribe_url(obj, recipient)
+        if unsubscribe_url:
             params["unsubscribe_url"] = unsubscribe_url
         # All done.
         return params
@@ -68,23 +77,49 @@ class EmailAdapter(object):
         )
         
     def get_content_html(self, obj, recipient):
-        """Returns the HTML content of the email that this object represents."""
+        """
+        Returns the HTML content of the email that this object represents.
+        
+        If it returns None, then the generated email will be plain text only.
+        """
         return template.loader.render_to_string(
             self._get_template_name(obj, "email.txt"),
             self.get_template_params(obj, recipient),
         )
+    
+    def get_from_email(self, obj, recipient):
+        """Returns the from email address for this email."""
+        return None
+        
+    def get_reply_to_email(self, obj, recipient):
+        """Returns the reply-to email address for this email, or None."""
+        return None
+        
+    def get_email_headers(self, obj, recipient):
+        """Generates any additional headers for this email."""
+        headers = {}
+        # Add the reply-to.
+        reply_to_email = self.get_reply_to_email(obj, recipient)
+        if reply_to_email:
+            headers["Reply-To"] = unicode(reply_to_email)
+        return headers
         
     def render_email(self, obj, recipient):
         """Renders this object to an email."""
-        # Render the content.
-        content_html = self.get_content_html(obj, recipient)
         # Create the email.
         email = EmailMultiAlternatives(
             subject = self.get_subject(obj, recipient),
             body = self.get_content(obj, recipient),
-            to = (unicode(recipient),)
+            to = (unicode(recipient),),
+            from_email = unicode(self.get_from_email(obj, recipient)),
         )
-        email.attach_alternative(content_html, "text/html")
+        # Add the HTML alternative.
+        content_html = self.get_content_html(obj, recipient)
+        if content_html:
+            email.attach_alternative(content_html, "text/html")
+        # Add the headers.
+        for name, value in self.get_email_headers(obj, recipient).iteritems():
+            email.headers[name] = value
         # All done.
         return email
 
@@ -186,7 +221,7 @@ class EmailManager(object):
         
     # Dispatching email.
     
-    def dispatch_email(self, obj, recipient, from_email="", reply_to_email=""):
+    def dispatch_email(self, obj, recipient):
         """Sends an email to the given recipient."""
         self._assert_registered(obj.__class__)
         # Determine the integer object id.
@@ -201,8 +236,6 @@ class EmailManager(object):
             object_id = unicode(obj.pk),
             object_id_int = object_id_int,
             recipient = recipient,
-            from_email = from_email,
-            reply_to_email = reply_to_email,
         )
         
     def send_email_batch_iter(self, batch_size=None):
@@ -237,10 +270,6 @@ class EmailManager(object):
                             # Generate the email.
                             email = adapter.render_email(obj, dispatched_email.recipient)
                             email.connection = connection
-                            if dispatched_email.from_email:
-                                email.from_email = dispatched_email.from_email
-                            if dispatched_email.reply_to_email:
-                                email.headers["Reply-To"] = dispatched_email.reply_to_email
                             # Try to send the email.
                             try:
                                 email.send()

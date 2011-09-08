@@ -60,6 +60,16 @@ class RecipientManager(models.Manager):
         return recipient
 
 
+def format_email(email, name=None):
+    """Formats the given email address string."""
+    if name:
+        return u"{name} <{email}>".format(
+            name = name,
+            email = email,
+        )
+    return email
+
+
 class Recipient(models.Model):
 
     """A known email address."""
@@ -98,25 +108,17 @@ class Recipient(models.Model):
         blank = True,
     )
     
+    @property
+    def full_name(self):
+        """Generates the full name of the recipient, or an empty string."""
+        return u" ".join(
+            part for part in (self.first_name, self.last_name)
+            if part
+        )
+    
     def __unicode__(self):
         """Returns the email string for this address."""
-        if self.first_name and self.last_name:
-            return u"{first_name} {last_name} <{email}>".format(
-                first_name = self.first_name,
-                last_name = self.last_name,
-                email = self.email,
-            )
-        if self.first_name:
-            return u"{first_name} <{email}>".format(
-                first_name = self.first_name,
-                email = self.email,
-            )
-        if self.last_name:
-            return u"{last_name} <{email}>".format(
-                last_name = self.last_name,
-                email = self.email,
-            )
-        return self.email
+        return format_email(self.email, self.full_name)
         
     class Meta:
         ordering = ("email",)
@@ -188,16 +190,6 @@ class DispatchedEmail(models.Model):
     
     recipient = models.ForeignKey(
         Recipient,
-    )
-    
-    from_email = models.CharField(
-        max_length = 200,
-        blank = True,
-    )
-    
-    reply_to_email = models.CharField(
-        max_length = 200,
-        blank = True,
     )
     
     status = models.IntegerField(
