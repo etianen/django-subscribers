@@ -69,7 +69,7 @@ class RecipientAdmin(AdminBase):
         for recipient in qs:
             recipient.mailing_lists.add(mailing_list)
         count = len(qs)
-        self.message_user(request, u"{count} {item} were added to {mailing_list}.".format(
+        self.message_user(request, u"{count} {item} added to {mailing_list}.".format(
             count = count,
             item = count != 1 and "recipients were" or "recipient was",
             mailing_list = mailing_list,
@@ -80,7 +80,7 @@ class RecipientAdmin(AdminBase):
         for recipient in qs:
             recipient.mailing_lists.remove(mailing_list)
         count = len(qs)
-        self.message_user(request, u"{count} {item} were removed from {mailing_list}.".format(
+        self.message_user(request, u"{count} {item} removed from {mailing_list}.".format(
             count = count,
             item = count != 1 and "recipients were" or "recipient was",
             mailing_list = mailing_list,
