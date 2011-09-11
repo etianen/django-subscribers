@@ -1,4 +1,4 @@
-"""Adapters for registering models with django-newsletters."""
+"""Adapters for registering models with django-subscribers."""
 
 from weakref import WeakValueDictionary
 from contextlib import closing
@@ -9,7 +9,7 @@ from django.contrib.contenttypes import generic
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.urlresolvers import reverse, NoReverseMatch
 
-from newsletters.models import has_int_pk, get_secure_hash, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
+from subscribers.models import has_int_pk, get_secure_hash, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
 
 
 class EmailAdapter(object):
@@ -20,7 +20,7 @@ class EmailAdapter(object):
         """Initializes the email adapter."""
         self.model = model
         
-    def get_subject(self, obj, recipient):
+    def get_subject(self, obj, subscriber):
         """Returns the subject for the email that this object represents."""
         return unicode(obj)
     
@@ -31,13 +31,13 @@ class EmailAdapter(object):
                 app_label = obj._meta.app_label,
                 model = obj.__class__.__name__.lower(),
             ) for template_path in (
-                "newsletters/{app_label}/{model}/email.txt",
-                "newsletters/{app_label}/email.txt",
-                "newsletters/email.txt",
+                "subscribers/{app_label}/{model}/email.txt",
+                "subscribers/{app_label}/email.txt",
+                "subscribers/email.txt",
             )
         ]
     
-    def get_unsubscribe_url(self, obj, recipient):
+    def get_unsubscribe_url(self, obj, subscriber):
         """
         Returns the unsubscribe URL for the email this object represents.
         
@@ -45,38 +45,38 @@ class EmailAdapter(object):
         template params.
         """
         try:
-            return reverse("newsletters.views.unsubscribe", args=(
+            return reverse("subscribers.views.unsubscribe", args=(
                 ContentType.objects.get_for_model(obj).id,
                 obj.pk,
-                recipient.pk,
-                get_secure_hash(obj, recipient),
+                subscriber.pk,
+                get_secure_hash(obj, subscriber),
             ))
         except NoReverseMatch:
             return None
         
-    def get_template_params(self, obj, recipient):
+    def get_template_params(self, obj, subscriber):
         """Returns the template params for the email this object represents."""
         # Get the base params.
         params = {
             "obj": obj,
-            "subject": self.get_subject(obj, recipient),
-            "recipient": recipient,
+            "subject": self.get_subject(obj, subscriber),
+            "subscriber": subscriber,
         }
         # Add in the unsubscribe url.
-        unsubscribe_url = self.get_unsubscribe_url(obj, recipient)
+        unsubscribe_url = self.get_unsubscribe_url(obj, subscriber)
         if unsubscribe_url:
             params["unsubscribe_url"] = unsubscribe_url
         # All done.
         return params
     
-    def get_content(self, obj, recipient):
+    def get_content(self, obj, subscriber):
         """Returns the plain text content of the email that this object represents."""
         return template.loader.render_to_string(
             self._get_template_name(obj, "email.txt"),
-            self.get_template_params(obj, recipient),
+            self.get_template_params(obj, subscriber),
         )
         
-    def get_content_html(self, obj, recipient):
+    def get_content_html(self, obj, subscriber):
         """
         Returns the HTML content of the email that this object represents.
         
@@ -84,41 +84,41 @@ class EmailAdapter(object):
         """
         return template.loader.render_to_string(
             self._get_template_name(obj, "email.txt"),
-            self.get_template_params(obj, recipient),
+            self.get_template_params(obj, subscriber),
         )
     
-    def get_from_email(self, obj, recipient):
+    def get_from_email(self, obj, subscriber):
         """Returns the from email address for this email."""
         return None
         
-    def get_reply_to_email(self, obj, recipient):
+    def get_reply_to_email(self, obj, subscriber):
         """Returns the reply-to email address for this email, or None."""
         return None
         
-    def get_email_headers(self, obj, recipient):
+    def get_email_headers(self, obj, subscriber):
         """Generates any additional headers for this email."""
         headers = {}
         # Add the reply-to.
-        reply_to_email = self.get_reply_to_email(obj, recipient)
+        reply_to_email = self.get_reply_to_email(obj, subscriber)
         if reply_to_email:
             headers["Reply-To"] = unicode(reply_to_email)
         return headers
         
-    def render_email(self, obj, recipient):
+    def render_email(self, obj, subscriber):
         """Renders this object to an email."""
         # Create the email.
         email = EmailMultiAlternatives(
-            subject = self.get_subject(obj, recipient),
-            body = self.get_content(obj, recipient),
-            to = (unicode(recipient),),
-            from_email = unicode(self.get_from_email(obj, recipient)),
+            subject = self.get_subject(obj, subscriber),
+            body = self.get_content(obj, subscriber),
+            to = (unicode(subscriber),),
+            from_email = unicode(self.get_from_email(obj, subscriber)),
         )
         # Add the HTML alternative.
-        content_html = self.get_content_html(obj, recipient)
+        content_html = self.get_content_html(obj, subscriber)
         if content_html:
             email.attach_alternative(content_html, "text/html")
         # Add the headers.
-        for name, value in self.get_email_headers(obj, recipient).iteritems():
+        for name, value in self.get_email_headers(obj, subscriber).iteritems():
             email.headers[name] = value
         # All done.
         return email
@@ -221,8 +221,8 @@ class EmailManager(object):
         
     # Dispatching email.
     
-    def dispatch_email(self, obj, recipient):
-        """Sends an email to the given recipient."""
+    def dispatch_email(self, obj, subscriber):
+        """Sends an email to the given subscriber."""
         self._assert_registered(obj.__class__)
         # Determine the integer object id.
         if has_int_pk(obj):
@@ -235,7 +235,7 @@ class EmailManager(object):
             content_type = ContentType.objects.get_for_model(obj),
             object_id = unicode(obj.pk),
             object_id_int = object_id_int,
-            recipient = recipient,
+            subscriber = subscriber,
         )
         
     def send_email_batch_iter(self, batch_size=None):
@@ -249,7 +249,7 @@ class EmailManager(object):
         dispatched_emails = DispatchedEmail.objects.filter(
             manager_slug = self._manager_slug,
             status = STATUS_PENDING,
-        ).select_related("recipient")
+        ).select_related("subscriber")
         if batch_size is not None:
             dispatched_emails = dispatched_emails[:batch_size]
         # Aquire a connection.
@@ -258,7 +258,7 @@ class EmailManager(object):
                 connection.open()
                 # Send the emails.
                 for dispatched_email in dispatched_emails:
-                    if dispatched_email.recipient.is_subscribed:
+                    if dispatched_email.subscriber.is_subscribed:
                         content_type = ContentType.objects.get_for_id(dispatched_email.content_type_id)
                         model = content_type.model_class()
                         try:
@@ -268,7 +268,7 @@ class EmailManager(object):
                         else:
                             adapter = self.get_adapter(model)
                             # Generate the email.
-                            email = adapter.render_email(obj, dispatched_email.recipient)
+                            email = adapter.render_email(obj, dispatched_email.subscriber)
                             email.connection = connection
                             # Try to send the email.
                             try:

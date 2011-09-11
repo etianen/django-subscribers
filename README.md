@@ -1,7 +1,7 @@
-django-newsletters
+django-subscribers
 ==================
 
-**django-newsletters** is a batch mailing utility for Django.
+**django-subscribers** is a batch mailing utility for Django.
 
 This project is currently under development. More documentation will follow as the project matures.
 
@@ -11,24 +11,24 @@ Documentation
 
 Please read the [Getting Started][] guide for more information.
 
-[Getting Started]: https://github.com/etianen/django-newsletters/wiki
-    "Getting started with django-newsletters"
+[Getting Started]: https://github.com/etianen/django-subscribers/wiki
+    "Getting started with django-subscribers"
     
 Download instructions, bug reporting and links to full documentation can be
 found at the [main project website][].
 
-[main project website]: http://github.com/etianen/django-newsletters
-    "django-newsletters on GitHub"
+[main project website]: http://github.com/etianen/django-subscribers
+    "django-subscribers on GitHub"
 
     
 More information
 ----------------
 
-The django-newsletters project was developed by Dave Hall. You can get the code
-from the [django-newsletters project site][].
+The django-subscribers project was developed by Dave Hall. You can get the code
+from the [django-subscribers project site][].
 
-[django-newsletters project site]: http://github.com/etianen/django-newsletters
-    "django-newsletters on GitHub"
+[django-subscribers project site]: http://github.com/etianen/django-subscribers
+    "django-subscribers on GitHub"
     
 Dave Hall is a freelance web developer, based in Cambridge, UK. You can usually
 find him on the Internet in a number of different places:

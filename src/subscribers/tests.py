@@ -1,4 +1,4 @@
-"""Tests for the django-newsletters application."""
+"""Tests for the django-subscribers application."""
 
 from django.db import models		
 from django.test import TestCase
@@ -10,10 +10,10 @@ from django.core.management import call_command
 from django import template
 from django.http import HttpResponseNotFound, HttpResponseServerError
 
-import newsletters
-from newsletters.admin import RecipientAdmin, MailingListAdmin
-from newsletters.models import Recipient, MailingList, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
-from newsletters.registration import RegistrationError
+import subscribers
+from subscribers.admin import SubscriberAdmin, MailingListAdmin
+from subscribers.models import Subscriber, MailingList, DispatchedEmail, STATUS_SENT, STATUS_UNSUBSCRIBED
+from subscribers.registration import RegistrationError
 
 
 class TestModelBase(models.Model):
@@ -56,124 +56,124 @@ class RegistrationTest(TestCase):
 
     def testRegistration(self):
         # Register the model and test.
-        newsletters.register(TestModel1)
-        self.assertTrue(newsletters.is_registered(TestModel1))
-        self.assertRaises(RegistrationError, lambda: newsletters.register(TestModel1))
-        self.assertTrue(TestModel1 in newsletters.get_registered_models())
-        self.assertTrue(isinstance(newsletters.get_adapter(TestModel1), newsletters.EmailAdapter))
+        subscribers.register(TestModel1)
+        self.assertTrue(subscribers.is_registered(TestModel1))
+        self.assertRaises(RegistrationError, lambda: subscribers.register(TestModel1))
+        self.assertTrue(TestModel1 in subscribers.get_registered_models())
+        self.assertTrue(isinstance(subscribers.get_adapter(TestModel1), subscribers.EmailAdapter))
         # Unregister the model and text.
-        newsletters.unregister(TestModel1)
-        self.assertFalse(newsletters.is_registered(TestModel1))
-        self.assertRaises(RegistrationError, lambda: newsletters.unregister(TestModel1))
-        self.assertTrue(TestModel1 not in newsletters.get_registered_models())
-        self.assertRaises(RegistrationError, lambda: isinstance(newsletters.get_adapter(TestModel1))) 
+        subscribers.unregister(TestModel1)
+        self.assertFalse(subscribers.is_registered(TestModel1))
+        self.assertRaises(RegistrationError, lambda: subscribers.unregister(TestModel1))
+        self.assertTrue(TestModel1 not in subscribers.get_registered_models())
+        self.assertRaises(RegistrationError, lambda: isinstance(subscribers.get_adapter(TestModel1))) 
 
 
-class RecipientTest(TestCase):
+class SubscriberTest(TestCase):
 
-    def testRecipientEmailString(self):
-        self.assertEqual(unicode(Recipient(
+    def testSubscriberEmailString(self):
+        self.assertEqual(unicode(Subscriber(
             email = "foo@bar.com",
         )), "foo@bar.com")
-        self.assertEqual(unicode(Recipient(
+        self.assertEqual(unicode(Subscriber(
             first_name = "Foo",
             email = "foo@bar.com",
         )), "Foo <foo@bar.com>")
-        self.assertEqual(unicode(Recipient(
+        self.assertEqual(unicode(Subscriber(
             last_name = "Bar",
             email = "foo@bar.com",
         )), "Bar <foo@bar.com>")
-        self.assertEqual(unicode(Recipient(
+        self.assertEqual(unicode(Subscriber(
             first_name = "Foo",
             last_name = "Bar",
             email = "foo@bar.com",
         )), "Foo Bar <foo@bar.com>")
         
-    def testRecipientsubscribe(self):
-        # Test that the recipient is created.
-        recipient = Recipient.objects.subscribe(email="foo@bar.com")
+    def testSubscribersubscribe(self):
+        # Test that the subscriber is created.
+        subscriber = Subscriber.objects.subscribe(email="foo@bar.com")
         try:
-            self.assertEqual(recipient.email, "foo@bar.com")
-            self.assertTrue(recipient.pk)
-            self.assertTrue(recipient.is_subscribed)
-            # Test that the recipient can be updated.
-            recipient = Recipient.objects.subscribe(email="foo@bar.com", first_name="Foo", last_name="Bar")
-            self.assertEqual(recipient.first_name, "Foo")
-            self.assertEqual(recipient.last_name, "Bar")
-            # Test that there is still only one recipient.
-            self.assertEqual(Recipient.objects.count(), 1)
-            # Test that the recipient can be resubscribed.
-            recipient.is_subscribed = False
-            recipient.save()
-            self.assertFalse(recipient.is_subscribed)
-            recipient = Recipient.objects.subscribe(email="foo@bar.com")
-            self.assertTrue(recipient.is_subscribed)
-            # Test that there is still only one recipient.
-            self.assertEqual(Recipient.objects.count(), 1)
+            self.assertEqual(subscriber.email, "foo@bar.com")
+            self.assertTrue(subscriber.pk)
+            self.assertTrue(subscriber.is_subscribed)
+            # Test that the subscriber can be updated.
+            subscriber = Subscriber.objects.subscribe(email="foo@bar.com", first_name="Foo", last_name="Bar")
+            self.assertEqual(subscriber.first_name, "Foo")
+            self.assertEqual(subscriber.last_name, "Bar")
+            # Test that there is still only one subscriber.
+            self.assertEqual(Subscriber.objects.count(), 1)
+            # Test that the subscriber can be resubscribed.
+            subscriber.is_subscribed = False
+            subscriber.save()
+            self.assertFalse(subscriber.is_subscribed)
+            subscriber = Subscriber.objects.subscribe(email="foo@bar.com")
+            self.assertTrue(subscriber.is_subscribed)
+            # Test that there is still only one subscriber.
+            self.assertEqual(Subscriber.objects.count(), 1)
             # Test that the stored name data is not overidden with blanks.
-            self.assertEqual(recipient.first_name, "Foo")
-            self.assertEqual(recipient.last_name, "Bar")
+            self.assertEqual(subscriber.first_name, "Foo")
+            self.assertEqual(subscriber.last_name, "Bar")
         finally:
-            # Delete the recipient (cleanup).
-            recipient.delete()
+            # Delete the subscriber (cleanup).
+            subscriber.delete()
             
             
 class DispatchedEmailTest(TestCase):
 
     def setUp(self):
-        newsletters.register(TestModel1)
-        newsletters.register(TestModel2)
+        subscribers.register(TestModel1)
+        subscribers.register(TestModel2)
         self.email1 = TestModel1.objects.create(subject="Foo 1")
         self.email2 = TestModel2.objects.create(subject="Foo 2")
-        self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
-        self.recipient2 = Recipient.objects.subscribe(email="foo2@bar.com")
+        self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
+        self.subscriber2 = Subscriber.objects.subscribe(email="foo2@bar.com")
         # Create the emails.
         for email in (self.email1, self.email2):
-            for recipient in (self.recipient1, self.recipient2):
-                newsletters.dispatch_email(email, recipient)
+            for subscriber in (self.subscriber1, self.subscriber2):
+                subscribers.dispatch_email(email, subscriber)
 
     def testDispatchEmail(self):
         # Make sure that the emails exist.
         self.assertEqual(DispatchedEmail.objects.count(), 4)
         # Send the emails.
-        sent_emails = newsletters.send_email_batch()
+        sent_emails = subscribers.send_email_batch()
         self.assertEqual(len([email for email in sent_emails if email.status == STATUS_SENT]), 4)
         self.assertEqual(len(mail.outbox), 4)
         # Check individual emails.
         self.assertEqual(mail.outbox[0].subject, "Foo 1")
-        self.assertEqual(mail.outbox[0].to, [unicode(self.recipient1)])
+        self.assertEqual(mail.outbox[0].to, [unicode(self.subscriber1)])
         self.assertEqual(mail.outbox[1].subject, "Foo 1")
-        self.assertEqual(mail.outbox[1].to, [unicode(self.recipient2)])
+        self.assertEqual(mail.outbox[1].to, [unicode(self.subscriber2)])
         self.assertEqual(mail.outbox[2].subject, "Foo 2")
-        self.assertEqual(mail.outbox[2].to, [unicode(self.recipient1)])
+        self.assertEqual(mail.outbox[2].to, [unicode(self.subscriber1)])
         self.assertEqual(mail.outbox[3].subject, "Foo 2")
-        self.assertEqual(mail.outbox[3].to, [unicode(self.recipient2)])
+        self.assertEqual(mail.outbox[3].to, [unicode(self.subscriber2)])
         # Make sure they aren't sent twice.
-        sent_emails = newsletters.send_email_batch()
+        sent_emails = subscribers.send_email_batch()
         self.assertEqual(len(sent_emails), 0)
         self.assertEqual(len(mail.outbox), 4)
     
     def testSendPartialBatch(self):
-        sent_emails = newsletters.send_email_batch(2)
+        sent_emails = subscribers.send_email_batch(2)
         self.assertEqual(len([email for email in sent_emails if email.status == STATUS_SENT]), 2)
         self.assertEqual(len(mail.outbox), 2)
     
     def testUnsubscribedEmailsNotSent(self):
-        # Unsubscribe a recipient.
-        self.recipient2.is_subscribed = False
-        self.recipient2.save()
+        # Unsubscribe a subscriber.
+        self.subscriber2.is_subscribed = False
+        self.subscriber2.save()
         # Send the emails.
-        sent_emails = newsletters.send_email_batch()
+        sent_emails = subscribers.send_email_batch()
         self.assertEqual(len([email for email in sent_emails if email.status == STATUS_SENT]), 2)
         self.assertEqual(len([email for email in sent_emails if email.status == STATUS_UNSUBSCRIBED]), 2)
         self.assertEqual(len(mail.outbox), 2)
         # Check individual emails.
         self.assertEqual(mail.outbox[0].subject, "Foo 1")
-        self.assertEqual(mail.outbox[0].to, [unicode(self.recipient1)])
+        self.assertEqual(mail.outbox[0].to, [unicode(self.subscriber1)])
         self.assertEqual(mail.outbox[1].subject, "Foo 2")
-        self.assertEqual(mail.outbox[1].to, [unicode(self.recipient1)])
+        self.assertEqual(mail.outbox[1].to, [unicode(self.subscriber1)])
         # Make sure they aren't sent twice.
-        sent_emails = newsletters.send_email_batch()
+        sent_emails = subscribers.send_email_batch()
         self.assertEqual(len(sent_emails), 0)
         self.assertEqual(len(mail.outbox), 2)
         
@@ -186,15 +186,15 @@ class DispatchedEmailTest(TestCase):
         self.assertEqual(len(mail.outbox), 2)
         
     def tearDown(self):
-        newsletters.unregister(TestModel1)
-        newsletters.unregister(TestModel2)
+        subscribers.unregister(TestModel1)
+        subscribers.unregister(TestModel2)
 
 
 # Tests that require a url conf.
 
 
 admin_site = admin.AdminSite()
-admin_site.register(Recipient, RecipientAdmin)
+admin_site.register(Subscriber, SubscriberAdmin)
 admin_site.register(MailingList, MailingListAdmin)
 
 
@@ -202,7 +202,7 @@ urlpatterns = patterns("",
     
     url("^admin/", include(admin_site.urls)),
 
-    url("^newsletters/", include("newsletters.urls")),
+    url("^subscribers/", include("subscribers.urls")),
 
 )
 
@@ -226,64 +226,64 @@ class MailingListAdminTest(TestCase):
         self.user.set_password("bar")
         self.user.save()
         self.client.login(username="foo", password="bar")
-        # Create a recipient and a mailing list.
-        self.recipient = Recipient.objects.create(
+        # Create a subscriber and a mailing list.
+        self.subscriber = Subscriber.objects.create(
             email = "foo@bar.com",
         )
         self.mailing_list = MailingList.objects.create(
             name = "Foo list",
         )
-        self.recipient.mailing_lists.add(self.mailing_list)
+        self.subscriber.mailing_lists.add(self.mailing_list)
         
     def testMailingListSubscriberCount(self):
         # Test a subscription.
-        response = self.client.get("/admin/newsletters/mailinglist/")
+        response = self.client.get("/admin/subscribers/mailinglist/")
         self.assertContains(response, "Foo list")
         self.assertContains(response, "<td>1</td>")
         # Test an unsubscription.
-        self.recipient.is_subscribed = False
-        self.recipient.save()
-        response = self.client.get("/admin/newsletters/mailinglist/")
+        self.subscriber.is_subscribed = False
+        self.subscriber.save()
+        response = self.client.get("/admin/subscribers/mailinglist/")
         self.assertContains(response, "Foo list")
         self.assertContains(response, "<td>0</td>")
         
         
 class UnsubscribeTest(TestCase):
 
-    urls = "newsletters.tests"
+    urls = "subscribers.tests"
     
     def setUp(self):
-        newsletters.register(TestModel1)
-        newsletters.register(TestModel2)
+        subscribers.register(TestModel1)
+        subscribers.register(TestModel2)
         self.email1 = TestModel1.objects.create(subject="Foo 1")
         self.email2 = TestModel2.objects.create(subject="Foo 1")
-        self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
+        self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
         
     def testUnsubscribeWorkflow(self):
         for email in (self.email1, self.email2):
-            self.assertTrue(Recipient.objects.get(id=self.recipient1.id).is_subscribed)
+            self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
             # Get the unsubscribe URL.
-            params = newsletters.get_adapter(TestModel1).get_template_params(email, self.recipient1)
+            params = subscribers.get_adapter(TestModel1).get_template_params(email, self.subscriber1)
             unsubscribe_url = params["unsubscribe_url"]
             self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
             # Attempt to unsubscribe from an email that was never dispatched.
             self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
             # Dispatch the email.
-            newsletters.dispatch_email(email, self.recipient1)
+            subscribers.dispatch_email(email, self.subscriber1)
             # Attempt to unsubscribe from an email that was never sent.
             self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
             # Send the emails.
-            sent_emails = newsletters.send_email_batch()
+            sent_emails = subscribers.send_email_batch()
             # Try to unsubscribe again.
             response = self.client.get(unsubscribe_url)
             self.assertEqual(response.status_code, 200)
             response = self.client.post(unsubscribe_url, follow=True)
             self.assertEqual(response.status_code, 200)
-            self.assertTemplateUsed(response, "newsletters/unsubscribe_success.html")
+            self.assertTemplateUsed(response, "subscribers/unsubscribe_success.html")
             # See if the unsubscribe worked.
-            self.assertFalse(Recipient.objects.get(id=self.recipient1.id).is_subscribed)
+            self.assertFalse(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
             # Re-subscribe the user.
-            self.recipient1 = Recipient.objects.subscribe(email="foo1@bar.com")
+            self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
     
     def tearDown(self):
-        newsletters.unregister(TestModel1)
+        subscribers.unregister(TestModel1)

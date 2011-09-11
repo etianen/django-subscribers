@@ -1,4 +1,4 @@
-"""Admin integration for newsletters."""
+"""Admin integration for subscribers."""
 
 from functools import partial
 
@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.db.models import Count
 
-from newsletters.models import Recipient, MailingList
+from subscribers.models import Subscriber, MailingList
 
 
 # Mix in watson search, if available.
@@ -17,9 +17,9 @@ else:
     AdminBase = admin.ModelAdmin
 
 
-class RecipientAdmin(AdminBase):
+class SubscriberAdmin(AdminBase):
 
-    """Admin integration for recipients."""
+    """Admin integration for subscribers."""
 
     search_fields = ("email", "first_name", "last_name",)
 
@@ -45,50 +45,50 @@ class RecipientAdmin(AdminBase):
     # Custom actions.
     
     def subscribe_selected(self, request, qs):
-        """Subscribes the selected recipients."""
+        """Subscribes the selected subscribers."""
         qs.update(is_subscribed=True)
         count = qs.count()
         self.message_user(request, u"{count} {item} marked as subscribed.".format(
             count = count,
-            item = count != 1 and "recipients were" or "recipient was",
+            item = count != 1 and "subscribers were" or "subscriber was",
         ))
-    subscribe_selected.short_description = "Mark selected recipients as subscribed"
+    subscribe_selected.short_description = "Mark selected subscribers as subscribed"
     
     def unsubscribe_selected(self, request, qs):
-        """Unsubscribes the selected recipients."""
+        """Unsubscribes the selected subscribers."""
         qs.update(is_subscribed=False)
         count = qs.count()
         self.message_user(request, u"{count} {item} marked as unsubscribed.".format(
             count = count,
-            item = count != 1 and "recipients were" or "recipient was",
+            item = count != 1 and "subscribers were" or "subscriber was",
         ))
-    unsubscribe_selected.short_description = "Mark selected recipients as unsubscribed"
+    unsubscribe_selected.short_description = "Mark selected subscribers as unsubscribed"
     
     def add_selected_to_mailing_list(self, request, qs, mailing_list):
-        """Adds the selected recipients to a mailing list."""
-        for recipient in qs:
-            recipient.mailing_lists.add(mailing_list)
+        """Adds the selected subscribers to a mailing list."""
+        for subscriber in qs:
+            subscriber.mailing_lists.add(mailing_list)
         count = len(qs)
         self.message_user(request, u"{count} {item} added to {mailing_list}.".format(
             count = count,
-            item = count != 1 and "recipients were" or "recipient was",
+            item = count != 1 and "subscribers were" or "subscriber was",
             mailing_list = mailing_list,
         ))
             
     def remove_selected_from_mailing_list(self, request, qs, mailing_list):
-        """Removes the selected recipients from a mailing list."""
-        for recipient in qs:
-            recipient.mailing_lists.remove(mailing_list)
+        """Removes the selected subscribers from a mailing list."""
+        for subscriber in qs:
+            subscriber.mailing_lists.remove(mailing_list)
         count = len(qs)
         self.message_user(request, u"{count} {item} removed from {mailing_list}.".format(
             count = count,
-            item = count != 1 and "recipients were" or "recipient was",
+            item = count != 1 and "subscribers were" or "subscriber was",
             mailing_list = mailing_list,
         ))
     
     def get_actions(self, request):
         """Returns the actions this admin class supports."""
-        actions = super(RecipientAdmin, self).get_actions(request)
+        actions = super(SubscriberAdmin, self).get_actions(request)
         # Add in the mailing list actions.
         mailing_lists = [
             (unicode(mailing_list).replace(" ", "_").lower(), mailing_list)
@@ -103,7 +103,7 @@ class RecipientAdmin(AdminBase):
             actions[add_action_name] = (
                 partial(self.__class__.add_selected_to_mailing_list, mailing_list=mailing_list),
                 add_action_name,
-                "Add selected recipients to {mailing_list}".format(
+                "Add selected subscribers to {mailing_list}".format(
                     mailing_list = mailing_list,
                 ),
             )
@@ -115,7 +115,7 @@ class RecipientAdmin(AdminBase):
             actions[remove_action_name] = (
                 partial(self.__class__.remove_selected_from_mailing_list, mailing_list=mailing_list),
                 remove_action_name,
-                "Remove selected recipients from {mailing_list}".format(
+                "Remove selected subscribers from {mailing_list}".format(
                     mailing_list = mailing_list,
                 ),
             )
@@ -123,7 +123,7 @@ class RecipientAdmin(AdminBase):
         return actions
     
     
-admin.site.register(Recipient, RecipientAdmin)
+admin.site.register(Subscriber, SubscriberAdmin)
 
 
 class MailingListAdmin(AdminBase):
@@ -136,7 +136,7 @@ class MailingListAdmin(AdminBase):
     
     def get_subscriber_count(self, obj):
         """Returns the number of subscribers to this list."""
-        return obj.recipient_set.filter(is_subscribed=True).count()
+        return obj.subscriber_set.filter(is_subscribed=True).count()
     get_subscriber_count.short_description = "Subscribers"
     
     

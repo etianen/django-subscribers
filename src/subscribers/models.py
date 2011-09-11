@@ -1,4 +1,4 @@
-"""Models used by django-newsletters."""
+"""Models used by django-subscribers."""
 
 import hashlib
 
@@ -18,7 +18,7 @@ def has_int_pk(model):
 
 class MailingList(models.Model):
 
-    """A list of recipients."""
+    """A list of subscribers."""
 
     date_created = models.DateTimeField(
         auto_now_add = True,
@@ -40,24 +40,24 @@ class MailingList(models.Model):
         ordering = ("name",)
         
         
-class RecipientManager(models.Manager):
+class SubscriberManager(models.Manager):
 
-    """Manager for the recipient model."""
+    """Manager for the subscriber model."""
     
     def subscribe(self, email, first_name=None, last_name=None):
-        """Signs up the given recipient."""
-        # Get the recipient.
+        """Signs up the given subscriber."""
+        # Get the subscriber.
         try:
-            recipient = self.get(email=email)
+            subscriber = self.get(email=email)
         except self.model.DoesNotExist:
-            recipient = Recipient(email=email)
+            subscriber = Subscriber(email=email)
         # Update the params.
-        recipient.first_name = first_name or recipient.first_name
-        recipient.last_name = last_name or recipient.last_name
-        recipient.is_subscribed = True
+        subscriber.first_name = first_name or subscriber.first_name
+        subscriber.last_name = last_name or subscriber.last_name
+        subscriber.is_subscribed = True
         # Save the model.
-        recipient.save()
-        return recipient
+        subscriber.save()
+        return subscriber
 
 
 def format_email(email, name=None):
@@ -70,11 +70,11 @@ def format_email(email, name=None):
     return email
 
 
-class Recipient(models.Model):
+class Subscriber(models.Model):
 
     """A known email address."""
     
-    objects = RecipientManager()
+    objects = SubscriberManager()
 
     date_created = models.DateTimeField(
         auto_now_add = True,
@@ -111,7 +111,7 @@ class Recipient(models.Model):
     
     @property
     def full_name(self):
-        """Generates the full name of the recipient, or an empty string."""
+        """Generates the full name of the subscriber, or an empty string."""
         return u" ".join(
             part for part in (self.first_name, self.last_name)
             if part
@@ -140,16 +140,16 @@ STATUS_CHOICES = (
 )
 
 
-def get_secure_hash(obj, recipient):
+def get_secure_hash(obj, subscriber):
     """
-    Returns a secure hash that can be used to identify the recipient
+    Returns a secure hash that can be used to identify the subscriber
     of the email email obj.
     """
     return hashlib.sha1(
         "$".join((
             settings.SECRET_KEY,
             unicode(obj.pk).encode("utf-8"),
-            str(recipient.pk),
+            str(subscriber.pk),
         ))
     ).hexdigest()
 
@@ -189,8 +189,8 @@ class DispatchedEmail(models.Model):
     
     object = generic.GenericForeignKey()
     
-    recipient = models.ForeignKey(
-        Recipient,
+    subscriber = models.ForeignKey(
+        Subscriber,
     )
     
     status = models.IntegerField(

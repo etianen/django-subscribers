@@ -5,8 +5,8 @@ import datetime
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.contenttypes.models import ContentType
 
-from newsletters.registration import default_email_manager
-from newsletters.models import STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
+from subscribers.registration import default_email_manager
+from subscribers.models import STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
 
 
 class Command(BaseCommand):
@@ -39,26 +39,26 @@ class Command(BaseCommand):
         for dispatched_email in default_email_manager.send_email_batch_iter(batch_size):
             dispatched_count += 1
             log_params = {
-                "recipient": dispatched_email.recipient,
+                "subscriber": dispatched_email.subscriber,
                 "model": ContentType.objects.get_for_id(dispatched_email.content_type_id).model_class().__name__,
                 "pk": dispatched_email.object_id,
             }
             if dispatched_email.status == STATUS_SENT:
                 sent_count += 1
                 if verbosity >= 3:
-                    self.stdout.write("  {recipient} {model} #{pk} - Success\n".format(**log_params))
+                    self.stdout.write("  {subscriber} {model} #{pk} - Success\n".format(**log_params))
             if dispatched_email.status == STATUS_CANCELLED:
                 cancelled_count += 1
                 if verbosity >= 3:
-                    self.stdout.write("  {recipient} {model} #{pk} - Cancelled\n".format(**log_params))
+                    self.stdout.write("  {subscriber} {model} #{pk} - Cancelled\n".format(**log_params))
             if dispatched_email.status == STATUS_UNSUBSCRIBED:
                 unsubscribed_count += 1
                 if verbosity >= 3:
-                    self.stdout.write("  {recipient} {model} #{pk} - Unsubscribed\n".format(**log_params))
+                    self.stdout.write("  {subscriber} {model} #{pk} - Unsubscribed\n".format(**log_params))
             if dispatched_email.status == STATUS_ERROR:
                 error_count += 1
                 if verbosity >= 3:
-                    self.stdout.write("  {recipient} {model} #{pk} - Error\n".format(**log_params))
+                    self.stdout.write("  {subscriber} {model} #{pk} - Error\n".format(**log_params))
         # Report on the results.
         if verbosity >= 1:
             self.stdout.write("Processed {count} emails\n".format(
