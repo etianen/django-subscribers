@@ -26,4 +26,4 @@ send_email_batch = default_email_manager.send_email_batch
 
 
 # Admin regisration.
-from subscribers.admin import NewsletterAdmin
+from subscribers.admin import EmailAdmin

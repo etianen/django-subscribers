@@ -199,11 +199,11 @@ def allow_save_and_test(func):
                 app = obj._meta.app_label,
                 model = obj.__class__.__name__.lower(),
             ), obj.pk)
-        return func(request, obj, *args, **kwargs)
+        return func(admin_cls, request, obj, *args, **kwargs)
     return do_allow_save_and_test
 
 
-class NewsletterAdmin(VersionAdminBase):
+class EmailAdmin(VersionAdminBase):
 
     """Base class for newsletter models."""
     
@@ -213,15 +213,15 @@ class NewsletterAdmin(VersionAdminBase):
     
     def __init__(self, *args, **kwargs):
         """Initializes the newsletter admin."""
-        super(NewsletterAdmin, self).__init__(*args, **kwargs)
+        super(EmailAdmin, self).__init__(*args, **kwargs)
         # Autoregister.
         if not self.email_manager.is_registered(self.model):
             self.email_manager.register(self.model)
     
     @allow_save_and_test
     def response_add(self, *args, **kwargs):
-        super(NewsletterAdmin, self).response_add(*args, **kwargs)
+        return super(EmailAdmin, self).response_add(*args, **kwargs)
 
     @allow_save_and_test        
     def response_change(self, *args, **kwargs):
-        super(NewsletterAdmin, self).response_change(*args, **kwargs)
+        return super(EmailAdmin, self).response_change(*args, **kwargs)

@@ -193,9 +193,15 @@ class DispatchedEmailTest(TestCase):
 # Tests that require a url conf.
 
 
+class TestAdminModel(TestModelBase):
+
+    pass
+
+
 admin_site = admin.AdminSite()
 admin_site.register(Subscriber, SubscriberAdmin)
 admin_site.register(MailingList, MailingListAdmin)
+admin_site.register(TestAdminModel, subscribers.EmailAdmin)
 
 
 urlpatterns = patterns("",
@@ -214,9 +220,7 @@ def handler500(request):
     return HttpResponseServerError("Server error")
 
 
-class MailingListAdminTest(TestCase):
-
-    urls = "subscribers.tests"
+class AdminTestBase(TestCase):
 
     def setUp(self):
         # Create an admin user.
@@ -228,6 +232,14 @@ class MailingListAdminTest(TestCase):
         self.user.set_password("bar")
         self.user.save()
         self.client.login(username="foo", password="bar")
+
+
+class MailingListAdminTest(AdminTestBase):
+
+    urls = "subscribers.tests"
+
+    def setUp(self):
+        super(MailingListAdminTest, self).setUp()
         # Create a subscriber and a mailing list.
         self.subscriber = Subscriber.objects.create(
             email = "foo@bar.com",
@@ -247,6 +259,65 @@ class MailingListAdminTest(TestCase):
         response = self.client.get("/admin/subscribers/mailinglist/")
         self.assertContains(response, "Foo list")
         self.assertContains(response, "<td>0</td>")
+
+
+class EmailAdminTest(AdminTestBase):
+
+    urls = "subscribers.tests"
+    
+    def testSaveAndTestAdd(self):
+        # Create an object.
+        response = self.client.post("/admin/auth/testadminmodel/add/", {
+            "subject": "Foo bar 1",
+            "_saveandtest": "1",
+        })
+        self.assertEqual(Subscriber.objects.count(), 0)
+        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertEqual(len(mail.outbox), 0)  # No email created, as user does not have an email.
+        # Add an email to our admin user.
+        self.user.email = "foo@bar.com"
+        self.user.save()
+        # Create an object again.
+        response = self.client.post("/admin/auth/testadminmodel/add/", {
+            "subject": "Foo bar 2",
+            "_saveandtest": "1",
+        })
+        self.assertEqual(Subscriber.objects.count(), 1)
+        obj = TestAdminModel.objects.get(subject="Foo bar 2")
+        change_url = "/admin/auth/testadminmodel/{pk}/".format(pk=obj.pk)
+        self.assertRedirects(response, change_url)
+        self.assertEqual(TestAdminModel.objects.count(), 2)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Foo bar 2")
+        # Change and test again.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 3",
+            "_saveandtest": "1",
+        })
+        self.assertEqual(Subscriber.objects.count(), 1)
+        self.assertRedirects(response, change_url)
+        self.assertEqual(TestAdminModel.objects.count(), 2)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[1].subject, "Foo bar 3")
+        
+    def testCanStillSaveNormally(self):
+        # Create an object.
+        response = self.client.post("/admin/auth/testadminmodel/add/", {
+            "subject": "Foo bar 1",
+        })
+        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertEqual(len(mail.outbox), 0)
+        obj = TestAdminModel.objects.get(subject="Foo bar 1")
+        change_url = "/admin/auth/testadminmodel/{pk}/".format(pk=obj.pk)
+        self.assertRedirects(response, "/admin/auth/testadminmodel/")
+        # Change and test again.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 2",
+        })
+        self.assertEqual(Subscriber.objects.count(), 0)
+        self.assertRedirects(response, "/admin/auth/testadminmodel/")
+        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertEqual(len(mail.outbox), 0)
         
         
 class UnsubscribeTest(TestCase):
