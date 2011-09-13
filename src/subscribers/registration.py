@@ -32,10 +32,11 @@ class EmailAdapter(object):
             template_path.format(
                 app_label = obj._meta.app_label,
                 model = obj.__class__.__name__.lower(),
+                template_name = template_name,
             ) for template_path in (
-                "subscribers/{app_label}/{model}/email.txt",
-                "subscribers/{app_label}/email.txt",
-                "subscribers/email.txt",
+                "subscribers/{app_label}/{model}/{template_name}",
+                "subscribers/{app_label}/{template_name}",
+                "subscribers/{template_name}",
             )
         ]
     
