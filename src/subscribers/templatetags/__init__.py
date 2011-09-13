@@ -1,1 +1,0 @@
-"""Template tags used by django-subscribers."""
