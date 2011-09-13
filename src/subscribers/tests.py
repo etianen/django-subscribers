@@ -89,7 +89,7 @@ class SubscriberTest(TestCase):
             email = "foo@bar.com",
         )), "Foo Bar <foo@bar.com>")
         
-    def testSubscribersubscribe(self):
+    def testSubscriberSubscribe(self):
         # Test that the subscriber is created.
         subscriber = Subscriber.objects.subscribe(email="foo@bar.com")
         try:
@@ -215,6 +215,8 @@ def handler500(request):
 
 
 class MailingListAdminTest(TestCase):
+
+    urls = "subscribers.tests"
 
     def setUp(self):
         # Create an admin user.

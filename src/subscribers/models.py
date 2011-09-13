@@ -38,26 +38,6 @@ class MailingList(models.Model):
         
     class Meta:
         ordering = ("name",)
-        
-        
-class SubscriberManager(models.Manager):
-
-    """Manager for the subscriber model."""
-    
-    def subscribe(self, email, first_name=None, last_name=None):
-        """Signs up the given subscriber."""
-        # Get the subscriber.
-        try:
-            subscriber = self.get(email=email)
-        except self.model.DoesNotExist:
-            subscriber = Subscriber(email=email)
-        # Update the params.
-        subscriber.first_name = first_name or subscriber.first_name
-        subscriber.last_name = last_name or subscriber.last_name
-        subscriber.is_subscribed = True
-        # Save the model.
-        subscriber.save()
-        return subscriber
 
 
 def format_email(email, name=None):
@@ -68,6 +48,38 @@ def format_email(email, name=None):
             email = email,
         )
     return email
+        
+        
+class SubscriberManager(models.Manager):
+
+    """Manager for the subscriber model."""
+    
+    def subscribe(self, email, first_name="", last_name="", force_save=True):
+        """Signs up the given subscriber."""
+        needs_update = False
+        # Get the subscriber.
+        try:
+            subscriber = self.get(email=email)
+        except self.model.DoesNotExist:
+            needs_update = True
+            subscriber = Subscriber(email=email)
+        else:
+            first_name = first_name or subscriber.first_name
+            last_name = last_name or subscriber.last_name
+        # Update the params.
+        if subscriber.first_name != first_name:
+            subscriber.first_name = first_name
+            needs_update = True
+        if subscriber.last_name != last_name:
+            subscriber.last_name = last_name
+            needs_update = True
+        if not subscriber.is_subscribed:
+            subscriber.is_subscribed = True
+            needs_update = True
+        # Save the model.
+        if needs_update or force_save:
+            subscriber.save()
+        return subscriber
 
 
 class Subscriber(models.Model):

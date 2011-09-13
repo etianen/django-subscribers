@@ -1,12 +1,14 @@
 """Admin integration for subscribers."""
 
-from functools import partial
+from functools import partial, wraps
 
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Count
+from django.shortcuts import redirect
 
 from subscribers.models import Subscriber, MailingList
+from subscribers.registration import default_email_manager
 
 
 # Mix in watson search, if available.
@@ -15,6 +17,15 @@ if "watson" in settings.INSTALLED_APPS:
     AdminBase = watson.SearchAdmin
 else:
     AdminBase = admin.ModelAdmin
+    
+    
+# Mix in reversion version control, if available.
+if "reversion" in settings.INSTALLED_APPS:
+    import reversion
+    class VersionAdminBase(reversion.VersionAdmin, AdminBase):
+        pass
+else:
+    VersionAdminBase = AdminBase
 
 
 class SubscriberAdmin(AdminBase):
@@ -149,3 +160,68 @@ class MailingListAdmin(AdminBase):
     
     
 admin.site.register(MailingList, MailingListAdmin)
+
+
+def allow_save_and_test(func):
+    """Decorator that enables save and test on an admin view."""
+    @wraps(func)
+    def do_allow_save_and_test(admin_cls, request, obj, *args, **kwargs):
+        if "_saveandtest" in request.POST:
+            # Subscribe the admin user.
+            user = request.user
+            if user.email:
+                # Get a subscriber object corresponding to the admin user.
+                subscriber = Subscriber.objects.subscribe(
+                    email = user.email,
+                    first_name = user.first_name,
+                    last_name = user.last_name,
+                    force_save = False,
+                )
+                # Send the email.
+                adapter = admin_cls.email_manager.get_adapter(obj.__class__)
+                email_obj = adapter.render_email(obj, subscriber)
+                email_obj.send()
+                # Message the user.
+                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. A test email has been sent to {email}.".format(
+                    model = obj._meta.verbose_name,
+                    obj = obj,
+                    email = subscriber.email,
+                ))
+            else:
+                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully.".format(
+                    model = obj._meta.verbose_name,
+                    obj = obj,
+                ))
+                messages.warning(request, u"Your admin account needs an email address before we can send a test email.")
+            # Redirect the user.
+            return redirect("{site}:{app}_{model}_change".format(
+                site = admin_cls.admin_site.name,
+                app = obj._meta.app_label,
+                model = obj.__class__.__name__.lower(),
+            ), obj.pk)
+        return func(request, obj, *args, **kwargs)
+    return do_allow_save_and_test
+
+
+class NewsletterAdmin(VersionAdminBase):
+
+    """Base class for newsletter models."""
+    
+    email_manager = default_email_manager
+    
+    change_form_template = "admin/subscribers/newsletter/change_form.html"
+    
+    def __init__(self, *args, **kwargs):
+        """Initializes the newsletter admin."""
+        super(NewsletterAdmin, self).__init__(*args, **kwargs)
+        # Autoregister.
+        if not self.email_manager.is_registered(self.model):
+            self.email_manager.register(self.model)
+    
+    @allow_save_and_test
+    def response_add(self, *args, **kwargs):
+        super(NewsletterAdmin, self).response_add(*args, **kwargs)
+
+    @allow_save_and_test        
+    def response_change(self, *args, **kwargs):
+        super(NewsletterAdmin, self).response_change(*args, **kwargs)

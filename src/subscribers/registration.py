@@ -111,7 +111,7 @@ class EmailAdapter(object):
             subject = self.get_subject(obj, subscriber),
             body = self.get_content(obj, subscriber),
             to = (unicode(subscriber),),
-            from_email = unicode(self.get_from_email(obj, subscriber)),
+            from_email = self.get_from_email(obj, subscriber),
         )
         # Add the HTML alternative.
         content_html = self.get_content_html(obj, subscriber)

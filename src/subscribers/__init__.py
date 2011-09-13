@@ -23,3 +23,7 @@ get_adapter = default_email_manager.get_adapter
 dispatch_email = default_email_manager.dispatch_email
 send_email_batch_iter = default_email_manager.send_email_batch_iter
 send_email_batch = default_email_manager.send_email_batch
+
+
+# Admin regisration.
+from subscribers.admin import NewsletterAdmin
