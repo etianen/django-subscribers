@@ -241,8 +241,7 @@ class MailingListAdminTest(TestCase):
         self.assertContains(response, "Foo list")
         self.assertContains(response, "<td>1</td>")
         # Test an unsubscription.
-        self.subscriber.is_subscribed = False
-        self.subscriber.save()
+        self.subscriber.mailing_lists.remove(self.mailing_list)
         response = self.client.get("/admin/subscribers/mailinglist/")
         self.assertContains(response, "Foo list")
         self.assertContains(response, "<td>0</td>")

@@ -134,9 +134,17 @@ class MailingListAdmin(AdminBase):
     
     list_display = ("name", "get_subscriber_count",)
     
+    def queryset(self, request):
+        """Returns the queryset to use for displaying the change list."""
+        qs = super(MailingListAdmin, self).queryset(request)
+        qs = qs.annotate(
+            subscriber_count = Count("subscriber"),
+        )
+        return qs
+    
     def get_subscriber_count(self, obj):
         """Returns the number of subscribers to this list."""
-        return obj.subscriber_set.filter(is_subscribed=True).count()
+        return obj.subscriber_count
     get_subscriber_count.short_description = "Subscribers"
     
     
