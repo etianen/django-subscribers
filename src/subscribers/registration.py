@@ -6,8 +6,10 @@ from contextlib import closing
 from django import template
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
+from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.urlresolvers import reverse, NoReverseMatch
+from django.conf import settings
 
 from subscribers.models import has_int_pk, get_secure_hash, DispatchedEmail, STATUS_PENDING, STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
 
@@ -61,7 +63,18 @@ class EmailAdapter(object):
             "obj": obj,
             "subject": self.get_subject(obj, subscriber),
             "subscriber": subscriber,
+            "MEDIA_URL": settings.MEDIA_URL,
+            "STATIC_URL": settings.STATIC_URL,
         }
+        # Add in the domain, if available.
+        if Site._meta.installed:
+            site = Site.objects.get_current()
+            params["site"] = site
+            params["domain"] = site.domain
+            params["host"] = u"http://" + site.domain
+        elif hasattr(settings, "SITE_DOMAIN"):
+            params["domain"] = settings.SITE_DOMAIN
+            params["host"] = u"http://" + settings.SITE_DOMAIN
         # Add in the unsubscribe url.
         unsubscribe_url = self.get_unsubscribe_url(obj, subscriber)
         if unsubscribe_url:
@@ -83,7 +96,7 @@ class EmailAdapter(object):
         If it returns None, then the generated email will be plain text only.
         """
         return template.loader.render_to_string(
-            self._get_template_name(obj, "email.txt"),
+            self._get_template_name(obj, "email.html"),
             self.get_template_params(obj, subscriber),
         )
     
