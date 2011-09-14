@@ -274,6 +274,8 @@ class EmailAdmin(VersionAdminBase):
     
     email_manager = default_email_manager
     
+    list_display = ("__unicode__", "get_subscriber_count",)
+    
     change_form_template = "admin/subscribers/newsletter/change_form.html"
     
     def __init__(self, *args, **kwargs):
@@ -282,6 +284,19 @@ class EmailAdmin(VersionAdminBase):
         # Autoregister.
         if not self.email_manager.is_registered(self.model):
             self.email_manager.register(self.model)
+    
+    def queryset(self, request):
+        """Returns the queryset to use for displaying the change list."""
+        qs = super(EmailAdmin, self).queryset(request)
+        qs = qs.annotate(
+            subscriber_count = Count("dispatchedemail_set"),
+        )
+        return qs
+    
+    def get_subscriber_count(self, obj):
+        """Returns the number of subscribers who have received this email."""
+        return obj.subscriber_count
+    get_subscriber_count.short_description = "Recipients"
     
     @allow_save_and_send
     @allow_save_and_test
