@@ -7,7 +7,7 @@ from django.contrib import admin, messages
 from django.db.models import Count
 from django.shortcuts import redirect
 
-from subscribers.models import Subscriber, MailingList
+from subscribers.models import Subscriber, MailingList, has_int_pk
 from subscribers.registration import default_email_manager
 
 
@@ -184,7 +184,9 @@ def allow_save_and_send(func):
     def do_allow_save_and_send(admin_cls, request, obj, *args, **kwargs):
         if "_saveandsend" in request.POST:
             # Get the default list of subscribers.
-            subscribers = Subscriber.objects.filter(is_subscribed=True)
+            subscribers = Subscriber.objects.filter(
+                is_subscribed = True,
+            )
             # Try filtering by mailing list.
             send_to = request.POST["_send_to"]
             if send_to == "_nobody":
@@ -205,9 +207,20 @@ def allow_save_and_send(func):
             else:
                 mailing_list = MailingList.objects.get(id=send_to)
                 subscribers = subscribers.filter(mailing_lists=mailing_list)
+            # Calculate potential subscriber count.    
+            potential_subscriber_count = subscribers.count()
+            # Exclude subscribers who have already received the email.
+            if has_int_pk(obj.__class__):
+                subscribers_to_send = subscribers.exclude(
+                    dispatchedemail__object_id_int = obj.pk,
+                )
+            else:
+                subscribers_to_send = subscribers.exclude(
+                    dispatchedemail__object_id = obj.pk,
+                )    
             # Send the email!
             subscriber_count = 0
-            for subscriber in subscribers.iterator():
+            for subscriber in subscribers_to_send.iterator():
                 subscriber_count += 1
                 admin_cls.email_manager.dispatch_email(obj, subscriber)
             # Message the user.
@@ -217,6 +230,13 @@ def allow_save_and_send(func):
                 count = subscriber_count,
                 pluralize = subscriber_count != 1 and "s" or "",
             ))
+            # Warn about unsent emails.
+            if potential_subscriber_count > subscriber_count:
+                unsent_count = potential_subscriber_count - subscriber_count
+                messages.warning(request, u"{count} subscriber{pluralize} ignored, as they have already received this email.".format(
+                    count = unsent_count,
+                    pluralize = unsent_count != 1 and "s were" or " was",
+                ))
             # Redirect the user.
             return redirect("{site}:{app}_{model}_changelist".format(
                 site = admin_cls.admin_site.name,
