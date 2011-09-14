@@ -30,7 +30,7 @@ class TestModelBase(models.Model):
         app_label = "auth"  # Hack: Cannot use an app_label that is under South control, due to http://south.aeracode.org/ticket/520
         
         
-class TestModel1(TestModelBase):
+class SubscribersTestModel1(TestModelBase):
 
     pass
 
@@ -43,7 +43,7 @@ def get_str_pk():
     return str(str_pk_gen)
     
     
-class TestModel2(TestModelBase):
+class SubscribersTestModel2(TestModelBase):
 
     id = models.CharField(
         primary_key = True,
@@ -56,17 +56,17 @@ class RegistrationTest(TestCase):
 
     def testRegistration(self):
         # Register the model and test.
-        subscribers.register(TestModel1)
-        self.assertTrue(subscribers.is_registered(TestModel1))
-        self.assertRaises(RegistrationError, lambda: subscribers.register(TestModel1))
-        self.assertTrue(TestModel1 in subscribers.get_registered_models())
-        self.assertTrue(isinstance(subscribers.get_adapter(TestModel1), subscribers.EmailAdapter))
+        subscribers.register(SubscribersTestModel1)
+        self.assertTrue(subscribers.is_registered(SubscribersTestModel1))
+        self.assertRaises(RegistrationError, lambda: subscribers.register(SubscribersTestModel1))
+        self.assertTrue(SubscribersTestModel1 in subscribers.get_registered_models())
+        self.assertTrue(isinstance(subscribers.get_adapter(SubscribersTestModel1), subscribers.EmailAdapter))
         # Unregister the model and text.
-        subscribers.unregister(TestModel1)
-        self.assertFalse(subscribers.is_registered(TestModel1))
-        self.assertRaises(RegistrationError, lambda: subscribers.unregister(TestModel1))
-        self.assertTrue(TestModel1 not in subscribers.get_registered_models())
-        self.assertRaises(RegistrationError, lambda: isinstance(subscribers.get_adapter(TestModel1))) 
+        subscribers.unregister(SubscribersTestModel1)
+        self.assertFalse(subscribers.is_registered(SubscribersTestModel1))
+        self.assertRaises(RegistrationError, lambda: subscribers.unregister(SubscribersTestModel1))
+        self.assertTrue(SubscribersTestModel1 not in subscribers.get_registered_models())
+        self.assertRaises(RegistrationError, lambda: isinstance(subscribers.get_adapter(SubscribersTestModel1))) 
 
 
 class SubscriberTest(TestCase):
@@ -121,10 +121,10 @@ class SubscriberTest(TestCase):
 class DispatchedEmailTest(TestCase):
 
     def setUp(self):
-        subscribers.register(TestModel1)
-        subscribers.register(TestModel2)
-        self.email1 = TestModel1.objects.create(subject="Foo 1")
-        self.email2 = TestModel2.objects.create(subject="Foo 2")
+        subscribers.register(SubscribersTestModel1)
+        subscribers.register(SubscribersTestModel2)
+        self.email1 = SubscribersTestModel1.objects.create(subject="Foo 1")
+        self.email2 = SubscribersTestModel2.objects.create(subject="Foo 2")
         self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
         self.subscriber2 = Subscriber.objects.subscribe(email="foo2@bar.com")
         # Create the emails.
@@ -186,14 +186,14 @@ class DispatchedEmailTest(TestCase):
         self.assertEqual(len(mail.outbox), 2)
         
     def tearDown(self):
-        subscribers.unregister(TestModel1)
-        subscribers.unregister(TestModel2)
+        subscribers.unregister(SubscribersTestModel1)
+        subscribers.unregister(SubscribersTestModel2)
 
 
 # Tests that require a url conf.
 
 
-class TestAdminModel(TestModelBase):
+class SubscribersTestAdminModel(TestModelBase):
 
     pass
 
@@ -201,7 +201,7 @@ class TestAdminModel(TestModelBase):
 admin_site = admin.AdminSite()
 admin_site.register(Subscriber, SubscriberAdmin)
 admin_site.register(MailingList, MailingListAdmin)
-admin_site.register(TestAdminModel, subscribers.EmailAdmin)
+admin_site.register(SubscribersTestAdminModel, subscribers.EmailAdmin)
 
 
 urlpatterns = patterns("",
@@ -267,26 +267,26 @@ class EmailAdminTest(AdminTestBase):
     
     def testSaveAndTestAdd(self):
         # Create an object.
-        response = self.client.post("/admin/auth/testadminmodel/add/", {
+        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
             "subject": "Foo bar 1",
             "_saveandtest": "1",
         })
         self.assertEqual(Subscriber.objects.count(), 0)
-        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)  # No email created, as user does not have an email.
         # Add an email to our admin user.
         self.user.email = "foo@bar.com"
         self.user.save()
         # Create an object again.
-        response = self.client.post("/admin/auth/testadminmodel/add/", {
+        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
             "subject": "Foo bar 2",
             "_saveandtest": "1",
         })
         self.assertEqual(Subscriber.objects.count(), 1)
-        obj = TestAdminModel.objects.get(subject="Foo bar 2")
-        change_url = "/admin/auth/testadminmodel/{pk}/".format(pk=obj.pk)
+        obj = SubscribersTestAdminModel.objects.get(subject="Foo bar 2")
+        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=obj.pk)
         self.assertRedirects(response, change_url)
-        self.assertEqual(TestAdminModel.objects.count(), 2)
+        self.assertEqual(SubscribersTestAdminModel.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Foo bar 2")
         # Change and test again.
@@ -296,27 +296,27 @@ class EmailAdminTest(AdminTestBase):
         })
         self.assertEqual(Subscriber.objects.count(), 1)
         self.assertRedirects(response, change_url)
-        self.assertEqual(TestAdminModel.objects.count(), 2)
+        self.assertEqual(SubscribersTestAdminModel.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(mail.outbox[1].subject, "Foo bar 3")
         
     def testCanStillSaveNormally(self):
         # Create an object.
-        response = self.client.post("/admin/auth/testadminmodel/add/", {
+        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
             "subject": "Foo bar 1",
         })
-        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)
-        obj = TestAdminModel.objects.get(subject="Foo bar 1")
-        change_url = "/admin/auth/testadminmodel/{pk}/".format(pk=obj.pk)
-        self.assertRedirects(response, "/admin/auth/testadminmodel/")
+        obj = SubscribersTestAdminModel.objects.get(subject="Foo bar 1")
+        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=obj.pk)
+        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
         # Change and test again.
         response = self.client.post(change_url, {
             "subject": "Foo bar 2",
         })
         self.assertEqual(Subscriber.objects.count(), 0)
-        self.assertRedirects(response, "/admin/auth/testadminmodel/")
-        self.assertEqual(TestAdminModel.objects.count(), 1)
+        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)
         
         
@@ -325,17 +325,17 @@ class UnsubscribeTest(TestCase):
     urls = "subscribers.tests"
     
     def setUp(self):
-        subscribers.register(TestModel1)
-        subscribers.register(TestModel2)
-        self.email1 = TestModel1.objects.create(subject="Foo 1")
-        self.email2 = TestModel2.objects.create(subject="Foo 1")
+        subscribers.register(SubscribersTestModel1)
+        subscribers.register(SubscribersTestModel2)
+        self.email1 = SubscribersTestModel1.objects.create(subject="Foo 1")
+        self.email2 = SubscribersTestModel2.objects.create(subject="Foo 1")
         self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
         
     def testUnsubscribeWorkflow(self):
         for email in (self.email1, self.email2):
             self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
             # Get the unsubscribe URL.
-            params = subscribers.get_adapter(TestModel1).get_template_params(email, self.subscriber1)
+            params = subscribers.get_adapter(SubscribersTestModel1).get_template_params(email, self.subscriber1)
             unsubscribe_url = params["unsubscribe_url"]
             self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
             # Attempt to unsubscribe from an email that was never dispatched.
@@ -358,4 +358,4 @@ class UnsubscribeTest(TestCase):
             self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
     
     def tearDown(self):
-        subscribers.unregister(TestModel1)
+        subscribers.unregister(SubscribersTestModel1)
