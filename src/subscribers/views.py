@@ -6,16 +6,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import Http404, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 
+from subscribers.forms import SubscribeForm
 from subscribers.models import DispatchedEmail, Subscriber, STATUS_PENDING
 from subscribers.registration import default_email_manager
-
-
-def subscribe(request):
-    pass
-    
-    
-def subscribe_success(request):
-    pass
 
 
 def _patch_context(context, extra_context):
@@ -27,10 +20,39 @@ def _patch_context(context, extra_context):
             context[name] = value
 
 
+def subscribe(request, form_cls=SubscribeForm, template_name="subscribers/subscribe.html", extra_context=None):
+    """Handles the subscribe success workflow."""
+    if request.method == "POST":
+        form = form_cls(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            Subscriber.objects.subscribe(
+                email = data["email"],
+                first_name = data["first_name"],
+                last_name = data["last_name"],
+            )
+            return redirect("subscribers.views.subscribe_success")
+    else:
+        form = form_cls
+    # Render the template.
+    context = {
+        "form": form,
+    }
+    _patch_context(context, extra_context)
+    return render(request, template_name, context)
+    
+    
+def subscribe_success(request, template_name="subscribers/subscribe_success.html", extra_context=None):
+    """Displays the subscribe success message to the user."""
+    context = {}
+    _patch_context(context, extra_context)
+    return render(request, template_name, context)
+
+
 def _protected_view(func):
     """Decorator that marks up a view as being protected by a secure hash."""
     @wraps(func)
-    def do_protected_view(request, content_type_id, object_id, subscriber_id, secure_hash):
+    def do_protected_view(request, content_type_id, object_id, subscriber_id, secure_hash, *args, **kwargs):
         # Look up the content type.
         try:
             content_type = ContentType.objects.get_for_id(content_type_id)

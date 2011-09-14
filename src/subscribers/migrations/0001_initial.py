@@ -43,7 +43,6 @@ class Migration(SchemaMigration):
             ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
             ('date_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
             ('manager_slug', self.gf('django.db.models.fields.CharField')(max_length=200, db_index=True)),
-            ('salt', self.gf('django.db.models.fields.CharField')(max_length=40)),
             ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['contenttypes.ContentType'])),
             ('object_id', self.gf('django.db.models.fields.TextField')()),
             ('object_id_int', self.gf('django.db.models.fields.IntegerField')(db_index=True, null=True, blank=True)),
@@ -87,7 +86,6 @@ class Migration(SchemaMigration):
             'object_id': ('django.db.models.fields.TextField', [], {}),
             'object_id_int': ('django.db.models.fields.IntegerField', [], {'db_index': 'True', 'null': 'True', 'blank': 'True'}),
             'subscriber': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['subscribers.Subscriber']"}),
-            'salt': ('django.db.models.fields.CharField', [], {'max_length': '40'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'db_index': 'True'}),
             'status_message': ('django.db.models.fields.TextField', [], {'blank': 'True'})
         },

@@ -7,7 +7,7 @@ urlpatterns = patterns("subscribers.views",
 
     url("^subscribe/$", "subscribe", name="subscribe"),
     
-    url("^subscribe/$", "subscribe_success", name="subscribe_success"),
+    url("^subscribe/success/$", "subscribe_success", name="subscribe_success"),
 
     url("^unsubscribe/([^-]+)-([^-]+)-([^-]+)-([^/]+)/$", "unsubscribe", name="unsubscribe"),
     

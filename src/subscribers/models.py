@@ -184,10 +184,6 @@ class DispatchedEmail(models.Model):
         max_length = 200,
     )
     
-    salt = models.CharField(
-        max_length = 40,
-    )
-    
     content_type = models.ForeignKey(
         ContentType,
     )
