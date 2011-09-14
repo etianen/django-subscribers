@@ -10,6 +10,14 @@ from subscribers.models import DispatchedEmail, Subscriber, STATUS_PENDING
 from subscribers.registration import default_email_manager
 
 
+def subscribe(request):
+    pass
+    
+    
+def subscribe_success(request):
+    pass
+
+
 def _patch_context(context, extra_context):
     """Updates the context with values from the extra context, if present."""
     if extra_context:

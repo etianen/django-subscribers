@@ -162,6 +162,7 @@ def get_secure_hash(obj, subscriber):
             settings.SECRET_KEY,
             unicode(obj.pk).encode("utf-8"),
             str(subscriber.pk),
+            str(subscriber.date_created.strftime("%Y-%m-%d-%H-%M-%S")),
         ))
     ).hexdigest()
 
