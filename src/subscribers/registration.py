@@ -56,6 +56,27 @@ class EmailAdapter(object):
             ))
         except NoReverseMatch:
             return None
+    
+    def get_domain(self, obj, subscriber):
+        """Returns the domain name for the email this object represents."""
+        # Try to use the site object.
+        if Site._meta.installed:
+            return Site.objects.get_current().domain
+        # Try to use a SITE_DOMAIN setting.
+        if hasattr(settings, "SITE_DOMAIN"):
+            domain = settings.SITE_DOMAIN
+            if settings.PREPEND_WWW and not domain.lower().startswith("www."):
+                domain = u"www." + domain
+            return domain
+        # Give up.
+        return None
+    
+    def get_host(self, obj, subscriber):
+        """Returns the host name for the email this object represents."""
+        domain = self.get_domain(obj, subscriber)
+        if domain:
+            return "http://" + domain
+        return None
         
     def get_template_params(self, obj, subscriber):
         """Returns the template params for the email this object represents."""
@@ -68,14 +89,13 @@ class EmailAdapter(object):
             "STATIC_URL": settings.STATIC_URL,
         }
         # Add in the domain, if available.
-        if Site._meta.installed:
-            site = Site.objects.get_current()
-            params["site"] = site
-            params["domain"] = site.domain
-            params["host"] = u"http://" + site.domain
-        elif hasattr(settings, "SITE_DOMAIN"):
-            params["domain"] = settings.SITE_DOMAIN
-            params["host"] = u"http://" + settings.SITE_DOMAIN
+        domain = self.get_domain(obj, subscriber)
+        if domain:
+            params["domain"] = domain
+        # Add in the host, if available.
+        host = self.get_host(obj, subscriber)
+        if host:
+            params["host"] = host
         # Add in the unsubscribe url.
         unsubscribe_url = self.get_unsubscribe_url(obj, subscriber)
         if unsubscribe_url:
