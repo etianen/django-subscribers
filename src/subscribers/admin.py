@@ -165,6 +165,55 @@ class MailingListAdmin(AdminBase):
 admin.site.register(MailingList, MailingListAdmin)
 
 
+def allow_save_and_send(func):
+    """Decorator that enables save and send on an admin view."""
+    @wraps(func)
+    def do_allow_save_and_send(admin_cls, request, obj, *args, **kwargs):
+        if "_saveandsend" in request.POST:
+            # Get the default list of subscribers.
+            subscribers = Subscriber.objects.filter(is_subscribed=True)
+            # Try filtering by mailing list.
+            send_to = request.POST["_send_to"]
+            if send_to == "_nobody":
+                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully.".format(
+                    model = obj._meta.verbose_name,
+                    obj = obj,
+                ))
+                messages.warning(request, u"Please select a mailing list to send this {model} to.".format(
+                    model = obj._meta.verbose_name,
+                ))
+                return redirect("{site}:{app}_{model}_change".format(
+                    site = admin_cls.admin_site.name,
+                    app = obj._meta.app_label,
+                    model = obj.__class__.__name__.lower(),
+                ), obj.pk)
+            elif send_to == "_all":
+                pass
+            else:
+                mailing_list = MailingList.objects.get(id=send_to)
+                subscribers = subscribers.filter(mailing_lists=mailing_list)
+            # Send the email!
+            subscriber_count = 0
+            for subscriber in subscribers.iterator():
+                subscriber_count += 1
+                admin_cls.email_manager.dispatch_email(obj, subscriber)
+            # Message the user.
+            admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. An email was sent to {count} subscriber{pluralize}.".format(
+                model = obj._meta.verbose_name,
+                obj = obj,
+                count = subscriber_count,
+                pluralize = subscriber_count != 1 and "s" or "",
+            ))
+            # Redirect the user.
+            return redirect("{site}:{app}_{model}_changelist".format(
+                site = admin_cls.admin_site.name,
+                app = obj._meta.app_label,
+                model = obj.__class__.__name__.lower(),
+            ))
+        return func(admin_cls, request, obj, *args, **kwargs)
+    return do_allow_save_and_send
+
+
 def allow_save_and_test(func):
     """Decorator that enables save and test on an admin view."""
     @wraps(func)
@@ -185,7 +234,7 @@ def allow_save_and_test(func):
                 email_obj = adapter.render_email(obj, subscriber)
                 email_obj.send()
                 # Message the user.
-                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. A test email has been sent to {email}.".format(
+                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. A test email was sent to {email}.".format(
                     model = obj._meta.verbose_name,
                     obj = obj,
                     email = subscriber.email,
@@ -221,10 +270,17 @@ class EmailAdmin(VersionAdminBase):
         if not self.email_manager.is_registered(self.model):
             self.email_manager.register(self.model)
     
+    @allow_save_and_send
     @allow_save_and_test
     def response_add(self, *args, **kwargs):
         return super(EmailAdmin, self).response_add(*args, **kwargs)
-
+    
+    @allow_save_and_send
     @allow_save_and_test        
     def response_change(self, *args, **kwargs):
         return super(EmailAdmin, self).response_change(*args, **kwargs)
+        
+    def render_change_form(self, request, context, *args, **kwargs):
+        """Renders the change form."""
+        context["send_to_options"] = MailingList.objects.all()
+        return super(EmailAdmin, self).render_change_form(request, context, *args, **kwargs)
