@@ -40,23 +40,6 @@ class EmailAdapter(object):
             )
         ]
     
-    def get_unsubscribe_url(self, obj, subscriber):
-        """
-        Returns the unsubscribe URL for the email this object represents.
-        
-        If it returns None, then no unsubscribe URL will be available in the
-        template params.
-        """
-        try:
-            return reverse("subscribers.views.unsubscribe", args=(
-                ContentType.objects.get_for_model(obj).id,
-                obj.pk,
-                subscriber.pk,
-                get_secure_hash(obj, subscriber),
-            ))
-        except NoReverseMatch:
-            return None
-    
     def get_domain(self, obj, subscriber):
         """Returns the domain name for the email this object represents."""
         # Try to use the site object.
@@ -77,6 +60,40 @@ class EmailAdapter(object):
         if domain:
             return "http://" + domain
         return None
+    
+    def get_unsubscribe_url(self, obj, subscriber):
+        """
+        Returns the unsubscribe URL for the email this object represents.
+        
+        If it returns None, then no unsubscribe URL will be available in the
+        template params.
+        """
+        try:
+            return self.get_host(obj, subscriber) + reverse("subscribers.views.unsubscribe", args=(
+                ContentType.objects.get_for_model(obj).id,
+                obj.pk,
+                subscriber.pk,
+                get_secure_hash(obj, subscriber),
+            ))
+        except NoReverseMatch:
+            return None
+            
+    def get_view_url(self, obj, subscriber):
+        """
+        Returns the view URL for the email this object represents.
+        
+        If it returns None, then no view URL will be available in the
+        template params.
+        """
+        try:
+            return self.get_host(obj, subscriber) + reverse("subscribers.views.email_detail", args=(
+                ContentType.objects.get_for_model(obj).id,
+                obj.pk,
+                subscriber.pk,
+                get_secure_hash(obj, subscriber),
+            ))
+        except NoReverseMatch:
+            return None
         
     def get_template_params(self, obj, subscriber):
         """Returns the template params for the email this object represents."""
@@ -100,6 +117,10 @@ class EmailAdapter(object):
         unsubscribe_url = self.get_unsubscribe_url(obj, subscriber)
         if unsubscribe_url:
             params["unsubscribe_url"] = unsubscribe_url
+        # Add in the view URL.
+        view_url = self.get_view_url(obj, subscriber)
+        if view_url:
+            params["view_url"] = view_url
         # All done.
         return params
     

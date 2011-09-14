@@ -219,7 +219,8 @@ def allow_save_and_send(func):
             else:
                 subscribers_to_send = subscribers.exclude(
                     dispatchedemail__object_id = obj.pk,
-                )    
+                )
+            subscribers_to_send = subscribers_to_send.distinct()
             # Send the email!
             subscriber_count = 0
             for subscriber in subscribers_to_send.iterator():

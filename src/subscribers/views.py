@@ -3,10 +3,11 @@
 from functools import wraps
 
 from django.contrib.contenttypes.models import ContentType
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 
 from subscribers.models import DispatchedEmail, Subscriber, STATUS_PENDING
+from subscribers.registration import default_email_manager
 
 
 def _patch_context(context, extra_context):
@@ -66,3 +67,27 @@ def unsubscribe_success(request, content_type, obj, subscriber, secure_hash, tem
     }
     _patch_context(context, extra_context)
     return render(request, template_name, context)
+    
+
+@_protected_view    
+def email_detail(request, content_type, obj, subscriber, secure_hash, email_manager=default_email_manager):
+    """Displays the detail view of the email."""
+    adapter = email_manager.get_adapter(obj.__class__)
+    content = adapter.get_content_html(obj, subscriber).encode("utf-8")
+    # Generate the response.
+    response = HttpResponse(content)
+    response["Content-Type"] = "text/html; charset=utf-8"
+    response["Content-Length"] = str(len(content))
+    return response
+    
+    
+@_protected_view    
+def email_detail_txt(request, content_type, obj, subscriber, secure_hash, email_manager=default_email_manager):
+    """Displays the detail view of the email, in plain text format."""
+    adapter = email_manager.get_adapter(obj.__class__)
+    content = adapter.get_content(obj, subscriber).encode("utf-8")
+    # Generate the response.
+    response = HttpResponse(content)
+    response["Content-Type"] = "text/plain; charset=utf-8"
+    response["Content-Length"] = str(len(content))
+    return response
