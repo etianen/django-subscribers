@@ -4,9 +4,13 @@ import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.contenttypes.models import ContentType
+from django.contrib import admin
 
 from subscribers.registration import default_email_manager
 from subscribers.models import STATUS_SENT, STATUS_CANCELLED, STATUS_UNSUBSCRIBED, STATUS_ERROR
+
+
+admin.autodiscover()
 
 
 class Command(BaseCommand):
