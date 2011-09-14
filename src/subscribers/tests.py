@@ -222,6 +222,8 @@ def handler500(request):
 
 class AdminTestBase(TestCase):
 
+    urls = "subscribers.tests"
+
     def setUp(self):
         # Create an admin user.
         self.user = User(
@@ -353,6 +355,65 @@ class EmailAdminTest(AdminTestBase):
         self.assertEqual(SubscribersTestAdminModel.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(mail.outbox[1].subject, "Foo bar 3")
+    
+    def testSaveAndSend(self):
+        # Create two subscribers.
+        subscriber1 = Subscriber.objects.create(
+            email = "foo1@bar.com",
+            is_subscribed = False,
+        )
+        subscriber2 = Subscriber.objects.create(
+            email = "foo2@bar.com",
+        )
+        # Create a mailing list.
+        mailing_list = MailingList.objects.create(
+            name = "Foo list",
+        )
+        subscriber1.mailing_lists.add(mailing_list)
+        # Create an email.
+        email = SubscribersTestAdminModel.objects.create(
+            subject = "Foo bar 1",
+        )
+        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=email.pk)
+        # Send to nobody.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 1",
+            "_saveandsend": "1",
+            "_send_to": "_nobody",
+        })
+        self.assertRedirects(response, change_url)
+        self.assertEqual(len(subscribers.send_email_batch()), 0)
+        self.assertEqual(len(mail.outbox), 0)
+        # Send to a list with an unsubscribed person.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 1",
+            "_saveandsend": "1",
+            "_send_to": mailing_list.pk,
+        })
+        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertEqual(len(subscribers.send_email_batch()), 0)
+        self.assertEqual(len(mail.outbox), 0)
+        # Subscribe the person again.
+        subscriber1.is_subscribed = True
+        subscriber1.save()
+        # Send to a list.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 1",
+            "_saveandsend": "1",
+            "_send_to": mailing_list.pk,
+        })
+        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertEqual(len(subscribers.send_email_batch()), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        # Send to everyone, minus the people who have received it.
+        response = self.client.post(change_url, {
+            "subject": "Foo bar 1",
+            "_saveandsend": "1",
+            "_send_to": "_all",
+        })
+        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertEqual(len(subscribers.send_email_batch()), 1)
+        self.assertEqual(len(mail.outbox), 2)
         
     def testCanStillSaveNormally(self):
         # Create an object.

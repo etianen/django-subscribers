@@ -70,8 +70,9 @@ class SubscriberAdmin(AdminBase):
     
     def subscribe_selected(self, request, qs):
         """Subscribes the selected subscribers."""
-        qs.update(is_subscribed=True)
-        count = qs.count()
+        for count, obj in enumerate(qs.iterator(), 1):  # HACK: Can't do this in an update, as it borks with the annotate clause in queryset().
+            obj.is_subscribed = True
+            obj.save()
         self.message_user(request, u"{count} {item} marked as subscribed.".format(
             count = count,
             item = count != 1 and "subscribers were" or "subscriber was",
@@ -80,8 +81,9 @@ class SubscriberAdmin(AdminBase):
     
     def unsubscribe_selected(self, request, qs):
         """Unsubscribes the selected subscribers."""
-        qs.update(is_subscribed=False)
-        count = qs.count()
+        for count, obj in enumerate(qs.iterator(), 1):  # HACK: Can't do this in an update, as it borks with the annotate clause in queryset().
+            obj.is_subscribed = False
+            obj.save()
         self.message_user(request, u"{count} {item} marked as unsubscribed.".format(
             count = count,
             item = count != 1 and "subscribers were" or "subscriber was",
