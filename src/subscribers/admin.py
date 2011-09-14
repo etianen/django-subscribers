@@ -38,7 +38,7 @@ class SubscriberAdmin(AdminBase):
 
     actions = ("subscribe_selected", "unsubscribe_selected",)
 
-    list_display = ("email", "first_name", "last_name", "is_subscribed", "date_created",)
+    list_display = ("email", "first_name", "last_name", "is_subscribed", "get_email_count", "date_created",)
     
     list_filter = ("is_subscribed", "mailing_lists",)
     
@@ -52,6 +52,19 @@ class SubscriberAdmin(AdminBase):
             "fields": ("mailing_lists",),
         }),
     )
+    
+    def queryset(self, request):
+        """Returns the queryset to use for displaying the change list."""
+        qs = super(SubscriberAdmin, self).queryset(request)
+        qs = qs.annotate(
+            email_count = Count("dispatchedemail"),
+        )
+        return qs
+    
+    def get_email_count(self, obj):
+        """Returns the number of emails sent to this subscriber."""
+        return obj.email_count
+    get_email_count.short_description = "Emails received"
     
     # Custom actions.
     
