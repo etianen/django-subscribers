@@ -102,7 +102,10 @@ class SubscriberAdmin(AdminBase):
         actions = super(SubscriberAdmin, self).get_actions(request)
         # Add in the mailing list actions.
         mailing_lists = [
-            (unicode(mailing_list).replace(" ", "_").lower(), mailing_list)
+            (u"{slug}_{pk}".format(
+                slug = unicode(mailing_list).replace(" ", "_").lower(),
+                pk = mailing_list.pk,
+            ), mailing_list)
             for mailing_list
             in MailingList.objects.all()
         ]

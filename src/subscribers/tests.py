@@ -234,6 +234,60 @@ class AdminTestBase(TestCase):
         self.client.login(username="foo", password="bar")
 
 
+class SubscriberAdminTest(AdminTestBase):
+
+    def setUp(self):
+        super(SubscriberAdminTest, self).setUp()
+        self.subscriber = Subscriber.objects.create(
+            email = "foo@bar.com",
+        )
+
+    def testSubscribeSelectedAction(self):
+        self.subscriber.is_subscribed = False
+        self.subscriber.save()
+        self.assertEqual(Subscriber.objects.get(id=self.subscriber.id).is_subscribed, False)
+        # Subscribe the subscriber.
+        response = self.client.post("/admin/subscribers/subscriber/", {
+            "action": "subscribe_selected",
+            "_selected_action": self.subscriber.id,
+        })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(Subscriber.objects.get(id=self.subscriber.id).is_subscribed, True)
+        
+    def testUnsubscribeSelectedAction(self):
+        # Unubscribe the subscriber.
+        response = self.client.post("/admin/subscribers/subscriber/", {
+            "action": "unsubscribe_selected",
+            "_selected_action": self.subscriber.id,
+        })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(Subscriber.objects.get(id=self.subscriber.id).is_subscribed, False)
+        
+    def testAddSelectedToMailingListAction(self):
+        mailing_list = MailingList.objects.create(
+            name = "Foo list",
+        )
+        response = self.client.post("/admin/subscribers/subscriber/", {
+            "action": "add_selected_to_foo_list_{pk}".format(pk=mailing_list.pk),
+            "_selected_action": self.subscriber.id,
+        })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(list(Subscriber.objects.get(id=self.subscriber.id).mailing_lists.all()), [mailing_list])
+        
+    def testRemoveSelectedFromMailingListAction(self):
+        mailing_list = MailingList.objects.create(
+            name = "Foo list",
+        )
+        self.subscriber.mailing_lists.add(mailing_list)
+        self.assertEqual(list(Subscriber.objects.get(id=self.subscriber.id).mailing_lists.all()), [mailing_list])
+        response = self.client.post("/admin/subscribers/subscriber/", {
+            "action": "remove_selected_from_foo_list_{pk}".format(pk=mailing_list.pk),
+            "_selected_action": self.subscriber.id,
+        })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(list(Subscriber.objects.get(id=self.subscriber.id).mailing_lists.all()), [])
+
+
 class MailingListAdminTest(AdminTestBase):
 
     urls = "subscribers.tests"
@@ -359,3 +413,4 @@ class UnsubscribeTest(TestCase):
     
     def tearDown(self):
         subscribers.unregister(SubscribersTestModel1)
+        subscribers.unregister(SubscribersTestModel2)
