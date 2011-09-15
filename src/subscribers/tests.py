@@ -450,8 +450,7 @@ class UnsubscribeTest(TestCase):
         for email in (self.email1, self.email2):
             self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
             # Get the unsubscribe URL.
-            params = subscribers.get_adapter(SubscribersTestModel1).get_template_params(email, self.subscriber1)
-            unsubscribe_url = params["unsubscribe_url"]
+            unsubscribe_url = subscribers.get_adapter(SubscribersTestModel1).get_unsubscribe_url(email, self.subscriber1)
             self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
             # Attempt to unsubscribe from an email that was never dispatched.
             self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
