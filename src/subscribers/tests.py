@@ -343,6 +343,30 @@ class MailingListAdminTest(AdminTestBase):
 
 class EmailAdminTest(AdminTestBase):
     
+    def assertRecipientsStatisticWorks(self, model):
+        model_slug = model.__name__.lower()
+        email = model.objects.create(
+            subject = "Foo bar 1",
+        )
+        response = self.client.get("/admin/auth/{model_slug}/".format(model_slug=model_slug))
+        self.assertContains(response, "Foo bar 1")
+        self.assertContains(response, "<td>0</td>")
+        # Dispatch an email.
+        subscriber = Subscriber.objects.create(
+            email = "foo@bar.com",
+        )
+        subscribers.dispatch_email(email, subscriber)
+        # Check that the statistics have updated.
+        response = self.client.get("/admin/auth/{model_slug}/".format(model_slug=model_slug))
+        self.assertContains(response, "Foo bar 1")
+        self.assertContains(response, "<td>1</td>")
+        
+    def testRecipientStatistic(self):
+        self.assertRecipientsStatisticWorks(SubscribersTestAdminModel1)
+        
+    def testRecipientStatisticStrPrimary(self):
+        self.assertRecipientsStatisticWorks(SubscribersTestAdminModel2)
+    
     def assertSaveAndTestWorks(self, model):
         model_slug = model.__name__.lower()
         # Create an object.
