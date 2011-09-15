@@ -515,32 +515,37 @@ class UnsubscribeTest(TestCase):
         self.email1 = SubscribersTestModel1.objects.create(subject="Foo 1")
         self.email2 = SubscribersTestModel2.objects.create(subject="Foo 1")
         self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
+    
+    def assertUnsubscribeWorkflowWorks(self, email):
+        self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
+        # Get the unsubscribe URL.
+        unsubscribe_url = subscribers.get_adapter(SubscribersTestModel1).get_unsubscribe_url(email, self.subscriber1)
+        self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
+        # Attempt to unsubscribe from an email that was never dispatched.
+        self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
+        # Dispatch the email.
+        subscribers.dispatch_email(email, self.subscriber1)
+        # Attempt to unsubscribe from an email that was never sent.
+        self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
+        # Send the emails.
+        sent_emails = subscribers.send_email_batch()
+        # Try to unsubscribe again.
+        response = self.client.get(unsubscribe_url)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(unsubscribe_url, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "subscribers/unsubscribe_success.html")
+        # See if the unsubscribe worked.
+        self.assertFalse(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
+        # Re-subscribe the user.
+        self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
         
     def testUnsubscribeWorkflow(self):
-        for email in (self.email1, self.email2):
-            self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
-            # Get the unsubscribe URL.
-            unsubscribe_url = subscribers.get_adapter(SubscribersTestModel1).get_unsubscribe_url(email, self.subscriber1)
-            self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
-            # Attempt to unsubscribe from an email that was never dispatched.
-            self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
-            # Dispatch the email.
-            subscribers.dispatch_email(email, self.subscriber1)
-            # Attempt to unsubscribe from an email that was never sent.
-            self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
-            # Send the emails.
-            sent_emails = subscribers.send_email_batch()
-            # Try to unsubscribe again.
-            response = self.client.get(unsubscribe_url)
-            self.assertEqual(response.status_code, 200)
-            response = self.client.post(unsubscribe_url, follow=True)
-            self.assertEqual(response.status_code, 200)
-            self.assertTemplateUsed(response, "subscribers/unsubscribe_success.html")
-            # See if the unsubscribe worked.
-            self.assertFalse(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
-            # Re-subscribe the user.
-            self.subscriber1 = Subscriber.objects.subscribe(email="foo1@bar.com")
-    
+        self.assertUnsubscribeWorkflowWorks(self.email1)
+        
+    def testUnsubscribeWorkflowStrPrimaru(self):
+        self.assertUnsubscribeWorkflowWorks(self.email2)
+                
     def tearDown(self):
         subscribers.unregister(SubscribersTestModel1)
         subscribers.unregister(SubscribersTestModel2)
