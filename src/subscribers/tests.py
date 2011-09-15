@@ -575,3 +575,86 @@ class EmailWorkflowsTest(TestCase):
     def tearDown(self):
         subscribers.unregister(SubscribersTestModel1)
         subscribers.unregister(SubscribersTestModel2)
+        
+        
+class SubscribeFormTest(TestCase):
+
+    urls = "subscribers.tests"
+
+    def testSubscribeFormRenders(self):
+        response = self.client.get("/subscribers/subscribe/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "subscribers/subscribe.html")
+        
+    def testSubcribeFormValidates(self):
+        response = self.client.post("/subscribers/subscribe/", {
+            "email": "foo",
+        })
+        self.assertEqual(response.status_code, 200)  # i.e. not a redirect to the success page.
+        
+    def testSubscribeByName(self):
+        response = self.client.post("/subscribers/subscribe/", {
+            "name": "Foo Bar",
+            "email": "foo@bar.com",
+        })
+        self.assertRedirects(response, "/subscribers/subscribe/success/")
+        # Make sure the subscriber was created.
+        subscriber = Subscriber.objects.get()
+        self.assertEqual(subscriber.email, "foo@bar.com")
+        self.assertTrue(subscriber.is_subscribed, True)
+        self.assertEqual(subscriber.first_name, "Foo")
+        self.assertEqual(subscriber.last_name, "Bar")
+        
+    def testSubscribeByNameParts(self):
+        response = self.client.post("/subscribers/subscribe/", {
+            "first_name": "Foo",
+            "last_name": "Bar",
+            "email": "foo@bar.com",
+        })
+        self.assertRedirects(response, "/subscribers/subscribe/success/")
+        # Make sure the subscriber was created.
+        subscriber = Subscriber.objects.get()
+        self.assertEqual(subscriber.email, "foo@bar.com")
+        self.assertTrue(subscriber.is_subscribed, True)
+        self.assertEqual(subscriber.first_name, "Foo")
+        self.assertEqual(subscriber.last_name, "Bar")
+        
+    def testResubscribeByName(self):
+        subscriber = Subscriber.objects.create(
+            email = "foo@bar.com",
+            is_subscribed = False,
+        )
+        response = self.client.post("/subscribers/subscribe/", {
+            "name": "Foo Bar",
+            "email": "foo@bar.com",
+        })
+        self.assertRedirects(response, "/subscribers/subscribe/success/")
+        # Make sure the subscriber was created.
+        subscriber = Subscriber.objects.get()
+        self.assertEqual(subscriber.email, "foo@bar.com")
+        self.assertTrue(subscriber.is_subscribed, True)
+        self.assertEqual(subscriber.first_name, "Foo")
+        self.assertEqual(subscriber.last_name, "Bar")
+        
+    def testResubscribeByNameParts(self):
+        subscriber = Subscriber.objects.create(
+            email = "foo@bar.com",
+            is_subscribed = False,
+        )
+        response = self.client.post("/subscribers/subscribe/", {
+            "first_name": "Foo",
+            "last_name": "Bar",
+            "email": "foo@bar.com",
+        })
+        self.assertRedirects(response, "/subscribers/subscribe/success/")
+        # Make sure the subscriber was created.
+        subscriber = Subscriber.objects.get()
+        self.assertEqual(subscriber.email, "foo@bar.com")
+        self.assertTrue(subscriber.is_subscribed, True)
+        self.assertEqual(subscriber.first_name, "Foo")
+        self.assertEqual(subscriber.last_name, "Bar")
+        
+    def testSubscribeSuccessRenders(self):
+        response = self.client.get("/subscribers/subscribe/success/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "subscribers/subscribe_success.html")

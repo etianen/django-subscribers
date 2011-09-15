@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="robots" content="NOINDEX, NOARCHIVE, NOFOLLOW">
+        <title>Subscribe to our newsletter</title>
+    </head>
+    <body>
+        <h1>Subscribe to our newsletter</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {{form.first_name.errors}}
+            <p>{{form.first_name.label_tag}} {{form.first_name}}</p>
+            
+            {{form.last_name.errors}}
+            <p>{{form.last_name.label_tag}} {{form.last_name}}</p>
+            
+            {{form.email.errors}}
+            <p>{{form.email.label_tag}} {{form.email}}</p>
+            
+            <p><input type="submit" value="Unsubscribe"></p>
+        </form>
+    </body>
+</html>
