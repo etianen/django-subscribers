@@ -1,5 +1,7 @@
 """Tests for the django-subscribers application."""
 
+import datetime
+
 from django.db import models		
 from django.test import TestCase
 from django.conf.urls.defaults import *
@@ -505,7 +507,7 @@ class EmailAdminTest(AdminTestBase):
         self.assertCanStillSaveNormally(SubscribersTestAdminModel2)
         
         
-class UnsubscribeTest(TestCase):
+class EmailWorkflowsTest(TestCase):
 
     urls = "subscribers.tests"
     
@@ -519,7 +521,7 @@ class UnsubscribeTest(TestCase):
     def assertUnsubscribeWorkflowWorks(self, email):
         self.assertTrue(Subscriber.objects.get(id=self.subscriber1.id).is_subscribed)
         # Get the unsubscribe URL.
-        unsubscribe_url = subscribers.get_adapter(SubscribersTestModel1).get_unsubscribe_url(email, self.subscriber1)
+        unsubscribe_url = subscribers.get_adapter(email.__class__).get_unsubscribe_url(email, self.subscriber1)
         self.assertTrue(unsubscribe_url)  # Make sure the unsubscribe url is set.
         # Attempt to unsubscribe from an email that was never dispatched.
         self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
@@ -528,7 +530,7 @@ class UnsubscribeTest(TestCase):
         # Attempt to unsubscribe from an email that was never sent.
         self.assertEqual(self.client.get(unsubscribe_url).status_code, 404)
         # Send the emails.
-        sent_emails = subscribers.send_email_batch()
+        subscribers.send_email_batch()
         # Try to unsubscribe again.
         response = self.client.get(unsubscribe_url)
         self.assertEqual(response.status_code, 200)
@@ -545,6 +547,26 @@ class UnsubscribeTest(TestCase):
         
     def testUnsubscribeWorkflowStrPrimaru(self):
         self.assertUnsubscribeWorkflowWorks(self.email2)
+        
+    def assertViewOnSiteWorks(self, email):
+        view_url = subscribers.get_adapter(email.__class__).get_view_url(email, self.subscriber1)
+        # Test that is doesn't let you in if the email has not been sent.
+        response = self.client.get(view_url)
+        self.assertEqual(response.status_code, 404)
+        # Test that an unsent email does not work.
+        subscribers.dispatch_email(email, self.subscriber1)
+        response = self.client.get(view_url)
+        self.assertEqual(response.status_code, 404)
+        # Test that the view URL is valid.
+        subscribers.send_email_batch()
+        response = self.client.get(view_url)
+        self.assertEqual(response.status_code, 200)
+        
+    def testViewOnSite(self):
+        self.assertViewOnSiteWorks(self.email1)
+        
+    def testViewOnSiteStrPrimary(self):
+        self.assertViewOnSiteWorks(self.email2)
                 
     def tearDown(self):
         subscribers.unregister(SubscribersTestModel1)
