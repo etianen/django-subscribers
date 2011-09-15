@@ -272,6 +272,14 @@ class SubscriberAdminTest(AdminTestBase):
         self.assertContains(response, "foo@bar.com")
         self.assertContains(response, "<td>1</td>")
 
+    def testExportToCsvAction(self):
+        response = self.client.post("/admin/subscribers/subscriber/", {
+            "action": "export_selected_to_csv",
+            "_selected_action": self.subscriber.id,
+        })
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertEqual(response.content, "email,first name,last name,subscribed\r\nfoo@bar.com,,,1\r\n")
+
     def testSubscribeSelectedAction(self):
         self.subscriber.is_subscribed = False
         self.subscriber.save()

@@ -1,11 +1,13 @@
 """Admin integration for subscribers."""
 
+import csv, cStringIO
 from functools import partial, wraps
 
 from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.shortcuts import redirect
+from django.http import HttpResponse
 
 from subscribers.models import Subscriber, MailingList, has_int_pk
 from subscribers.registration import default_email_manager
@@ -36,7 +38,7 @@ class SubscriberAdmin(AdminBase):
 
     date_hierarchy = "date_created"
 
-    actions = ("subscribe_selected", "unsubscribe_selected",)
+    actions = ("export_selected_to_csv", "subscribe_selected", "unsubscribe_selected",)
 
     list_display = ("email", "first_name", "last_name", "is_subscribed", "get_email_count", "date_created",)
     
@@ -67,6 +69,29 @@ class SubscriberAdmin(AdminBase):
     get_email_count.short_description = "Emails received"
     
     # Custom actions.
+    
+    def export_selected_to_csv(self, request, qs):
+        """Renders the selected subscribers to CSV."""
+        out = cStringIO.StringIO()
+        # Render the preamble.
+        writer = csv.writer(out)
+        writer.writerow(("email", "first name", "last name", "subscribed",))
+        # Render the CSV.
+        for subscriber in qs:
+            writer.writerow((
+                subscriber.email.encode("utf-8"),
+                subscriber.first_name.encode("utf-8"),
+                subscriber.last_name.encode("utf-8"),
+                str(int(subscriber.is_subscribed)),
+            ))
+        # Render the response.
+        content = out.getvalue()
+        response = HttpResponse(content)
+        response["Content-Type"] = "text/csv; charset=utf-8"
+        response["Content-Disposition"] = "attachment; filename=subscribers.csv"
+        response["Content-Length"] = str(len(content))
+        return response
+    export_selected_to_csv.short_description = "Export selected subscribers to CSV"
     
     def subscribe_selected(self, request, qs):
         """Subscribes the selected subscribers."""
