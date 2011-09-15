@@ -561,6 +561,10 @@ class EmailWorkflowsTest(TestCase):
         subscribers.send_email_batch()
         response = self.client.get(view_url)
         self.assertEqual(response.status_code, 200)
+        # Test that the txt version also works.
+        response = self.client.get(view_url + "txt/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/plain; charset=utf-8")
         
     def testViewOnSite(self):
         self.assertViewOnSiteWorks(self.email1)
