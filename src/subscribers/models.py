@@ -54,7 +54,7 @@ class SubscriberManager(models.Manager):
 
     """Manager for the subscriber model."""
     
-    def subscribe(self, email, first_name="", last_name="", force_save=True):
+    def subscribe(self, email, first_name="", last_name="", is_subscribed=True, force_save=True):
         """Signs up the given subscriber."""
         needs_update = False
         # Get the subscriber.
@@ -73,8 +73,8 @@ class SubscriberManager(models.Manager):
         if subscriber.last_name != last_name:
             subscriber.last_name = last_name
             needs_update = True
-        if not subscriber.is_subscribed:
-            subscriber.is_subscribed = True
+        if is_subscribed is not None and subscriber.is_subscribed != is_subscribed:
+            subscriber.is_subscribed = is_subscribed
             needs_update = True
         # Save the model.
         if needs_update or force_save:

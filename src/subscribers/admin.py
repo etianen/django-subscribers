@@ -4,11 +4,14 @@ import csv, cStringIO
 from functools import partial, wraps
 
 from django.conf import settings
+from django.conf.urls.defaults import patterns, url
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.shortcuts import redirect
+from django.db import transaction
+from django.shortcuts import redirect, render
 from django.http import HttpResponse
 
+from subscribers.forms import ImportFromCsvForm
 from subscribers.models import Subscriber, MailingList, has_int_pk
 from subscribers.registration import default_email_manager
 
@@ -67,6 +70,59 @@ class SubscriberAdmin(AdminBase):
         """Returns the number of emails sent to this subscriber."""
         return obj.email_count
     get_email_count.short_description = "Emails received"
+    
+    # Custom views.
+    
+    def get_urls(self):
+        """Returns the URL conf for this admin class."""
+        urlpatterns = super(SubscriberAdmin, self).get_urls()
+        admin_view = self.admin_site.admin_view
+        urlpatterns = patterns("",
+            url("^import/$", admin_view(self.import_from_csv), name="subscribers_subscriber_import"),
+        ) + urlpatterns
+        return urlpatterns
+        
+    @transaction.commit_on_success
+    def import_from_csv(self, request):
+        """Allows users to be imported from a CSV file."""
+        # Process the form.
+        if request.method == "POST":
+            form = ImportFromCsvForm(request.POST, request.FILES)
+            if form.is_valid():
+                cleaned_rows = form.cleaned_data["rows"]
+                invalid_rows = form.cleaned_data["invalid_rows"]
+                # Import all cleaned rows.
+                for data in cleaned_rows:
+                    Subscriber.objects.subscribe(
+                        email = data["email"],
+                        first_name = data["first_name"],
+                        last_name = data["last_name"],
+                        is_subscribed = None,
+                    )
+                # Message the user.
+                self.message_user(request, "Successfully imported {count} subscriber{pluralize}.".format(
+                    count = len(cleaned_rows),
+                    pluralize = len(cleaned_rows) != 1 and "s" or "",
+                ))
+                if invalid_rows:
+                    messages.warning(request, "There {were} {count} error{pluralize} in your CSV file. The {first} error was on line {lineno}.".format(
+                        were = len(invalid_rows) != 1 and "were" or "was",
+                        count = len(invalid_rows),
+                        pluralize = len(invalid_rows) != 1 and "s" or "",
+                        lineno = invalid_rows[0][0],
+                        first = len(invalid_rows) != 1 and "first" or "",
+                    ))
+                # Redirect.
+                return redirect("{site}:subscribers_subscriber_changelist".format(
+                    site = self.admin_site.name,
+                ))
+        else:
+            form = ImportFromCsvForm()
+        # Render the template.
+        return render(request, "admin/subscribers/subscriber/import_from_csv.html", {
+            "title": "Import subscribers from CSV",
+            "form": form,
+        })
     
     # Custom actions.
     

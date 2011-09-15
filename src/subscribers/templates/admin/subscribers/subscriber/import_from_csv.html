@@ -1,0 +1,81 @@
+{% extends "admin/change_form.html" %}
+{% load url from future %}
+
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'admin:app_list' 'subscribers' %}">Subscribers</a> &rsaquo;
+        <a href="{% url 'admin:subscribers_subscriber_changelist' %}">Subscriber</a> &rsaquo;
+        Import subscribers from CSV
+    </div>
+{% endblock %}
+
+
+{% block content %}
+    
+    <div id="content-main">
+    
+        <p>Please upload a CSV file of subscribers. This should be formatted as per the examples below.</p>
+        
+        <table class="module float-left">
+            <tr>
+                <th>Email</th>
+                <th>First name</th>
+                <th>Last name</th>
+            </tr>
+            <tr>
+                <td>john@smith.com</td>
+                <td>John</td>
+                <td>Smith</td>
+            </tr>
+        </table>
+        
+        <span class="float-left">&nbsp;&nbsp;</span>
+        
+        <table class="module float-left">
+            <tr>
+                <th>Email</th>
+                <th>Name</th>
+            </tr>
+            <tr>
+                <td>john@smith.com</td>
+                <td>John Smith</td>
+            </tr>
+        </table>
+        
+        <span class="float-left">&nbsp;&nbsp;</span>
+        
+        <table class="module float-left">
+            <tr>
+                <th>Email</th>
+            </tr>
+            <tr>
+                <td>john@smith.com</td>
+            </tr>
+        </table>
+        
+        <p class="clear"><br>Users who have unsubscribed from your mailing list won't be re-subscribed if they are imported again.</p>
+    
+        <form action="" method="post" enctype="multipart/form-data">
+        
+            <fieldset class="module aligned">
+            
+                {% csrf_token %}
+            
+                <div class="form-row">
+                    {{form.file.errors}}
+                    <label for="id_file" class="required">File:</label> {{form.file}}
+                </div>
+            
+            </fieldset>
+            
+            <div class="submit-row">
+                <input class="default" type="submit" value="Import from CSV"/>
+            </div>
+        
+        </form>
+    
+    </div>
+    
+{% endblock %}
