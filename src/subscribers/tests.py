@@ -256,6 +256,20 @@ class SubscriberAdminTest(AdminTestBase):
             email = "foo@bar.com",
         )
 
+    def testEmailsReceivedStatistic(self):
+        response = self.client.get("/admin/subscribers/subscriber/")
+        self.assertContains(response, "foo@bar.com")
+        self.assertContains(response, "<td>0</td>")
+        # Send the subscriber an email.
+        email = SubscribersTestAdminModel1.objects.create(
+            subject = "Foo bar 1",
+        )
+        subscribers.dispatch_email(email, self.subscriber)
+        # Test that the email count is updated.
+        response = self.client.get("/admin/subscribers/subscriber/")
+        self.assertContains(response, "foo@bar.com")
+        self.assertContains(response, "<td>1</td>")
+
     def testSubscribeSelectedAction(self):
         self.subscriber.is_subscribed = False
         self.subscriber.save()
