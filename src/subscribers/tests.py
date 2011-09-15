@@ -48,7 +48,8 @@ class SubscribersTestModel2(TestModelBase):
     id = models.CharField(
         primary_key = True,
         max_length = 100,
-        default = get_str_pk
+        default = get_str_pk,
+        editable = False,
     )
 
 
@@ -193,15 +194,26 @@ class DispatchedEmailTest(TestCase):
 # Tests that require a url conf.
 
 
-class SubscribersTestAdminModel(TestModelBase):
+class SubscribersTestAdminModel1(TestModelBase):
 
     pass
+    
+    
+class SubscribersTestAdminModel2(TestModelBase):
+
+    id = models.CharField(
+        primary_key = True,
+        max_length = 100,
+        default = get_str_pk,
+        editable = False,
+    )
 
 
 admin_site = admin.AdminSite()
 admin_site.register(Subscriber, SubscriberAdmin)
 admin_site.register(MailingList, MailingListAdmin)
-admin_site.register(SubscribersTestAdminModel, subscribers.EmailAdmin)
+admin_site.register(SubscribersTestAdminModel1, subscribers.EmailAdmin)
+admin_site.register(SubscribersTestAdminModel2, subscribers.EmailAdmin)
 
 
 urlpatterns = patterns("",
@@ -292,8 +304,6 @@ class SubscriberAdminTest(AdminTestBase):
 
 class MailingListAdminTest(AdminTestBase):
 
-    urls = "subscribers.tests"
-
     def setUp(self):
         super(MailingListAdminTest, self).setUp()
         # Create a subscriber and a mailing list.
@@ -318,31 +328,33 @@ class MailingListAdminTest(AdminTestBase):
 
 
 class EmailAdminTest(AdminTestBase):
-
-    urls = "subscribers.tests"
     
-    def testSaveAndTestAdd(self):
+    def assertSaveAndTestWorks(self, model):
+        model_slug = model.__name__.lower()
         # Create an object.
-        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
+        response = self.client.post("/admin/auth/{model_slug}/add/".format(model_slug=model_slug), {
             "subject": "Foo bar 1",
             "_saveandtest": "1",
         })
         self.assertEqual(Subscriber.objects.count(), 0)
-        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
+        self.assertEqual(model.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)  # No email created, as user does not have an email.
+        obj = model.objects.get(subject="Foo bar 1")
+        change_url = "/admin/auth/{model_slug}/{pk}/".format(model_slug=model_slug, pk=obj.pk)
+        self.assertRedirects(response, change_url)
         # Add an email to our admin user.
         self.user.email = "foo@bar.com"
         self.user.save()
         # Create an object again.
-        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
+        response = self.client.post("/admin/auth/{model_slug}/add/".format(model_slug=model_slug), {
             "subject": "Foo bar 2",
             "_saveandtest": "1",
         })
         self.assertEqual(Subscriber.objects.count(), 1)
-        obj = SubscribersTestAdminModel.objects.get(subject="Foo bar 2")
-        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=obj.pk)
+        obj = model.objects.get(subject="Foo bar 2")
+        change_url = "/admin/auth/{model_slug}/{pk}/".format(model_slug=model_slug, pk=obj.pk)
         self.assertRedirects(response, change_url)
-        self.assertEqual(SubscribersTestAdminModel.objects.count(), 2)
+        self.assertEqual(model.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Foo bar 2")
         # Change and test again.
@@ -352,11 +364,18 @@ class EmailAdminTest(AdminTestBase):
         })
         self.assertEqual(Subscriber.objects.count(), 1)
         self.assertRedirects(response, change_url)
-        self.assertEqual(SubscribersTestAdminModel.objects.count(), 2)
+        self.assertEqual(model.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(mail.outbox[1].subject, "Foo bar 3")
     
-    def testSaveAndSend(self):
+    def testSaveAndTest(self):
+        self.assertSaveAndTestWorks(SubscribersTestAdminModel1)
+        
+    def testSaveAndTestAddStrPrimary(self):
+        self.assertSaveAndTestWorks(SubscribersTestAdminModel2)
+    
+    def assertSaveAndSendWorks(self, model):
+        model_slug = model.__name__.lower()
         # Create two subscribers.
         subscriber1 = Subscriber.objects.create(
             email = "foo1@bar.com",
@@ -371,10 +390,10 @@ class EmailAdminTest(AdminTestBase):
         )
         subscriber1.mailing_lists.add(mailing_list)
         # Create an email.
-        email = SubscribersTestAdminModel.objects.create(
+        email = model.objects.create(
             subject = "Foo bar 1",
         )
-        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=email.pk)
+        change_url = "/admin/auth/{model_slug}/{pk}/".format(model_slug=model_slug, pk=email.pk)
         # Send to nobody.
         response = self.client.post(change_url, {
             "subject": "Foo bar 1",
@@ -390,7 +409,7 @@ class EmailAdminTest(AdminTestBase):
             "_saveandsend": "1",
             "_send_to": mailing_list.pk,
         })
-        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 0)
         self.assertEqual(len(mail.outbox), 0)
         # Subscribe the person again.
@@ -402,7 +421,7 @@ class EmailAdminTest(AdminTestBase):
             "_saveandsend": "1",
             "_send_to": mailing_list.pk,
         })
-        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 1)
         self.assertEqual(len(mail.outbox), 1)
         # Send to everyone, minus the people who have received it.
@@ -411,28 +430,41 @@ class EmailAdminTest(AdminTestBase):
             "_saveandsend": "1",
             "_send_to": "_all",
         })
-        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 1)
         self.assertEqual(len(mail.outbox), 2)
         
-    def testCanStillSaveNormally(self):
+    def testSaveAndSend(self):
+        self.assertSaveAndSendWorks(SubscribersTestAdminModel1)
+        
+    def testSaveAndSendStrPrimary(self):
+        self.assertSaveAndSendWorks(SubscribersTestAdminModel2)
+        
+    def assertCanStillSaveNormally(self, model):
+        model_slug = model.__name__.lower()
         # Create an object.
-        response = self.client.post("/admin/auth/subscriberstestadminmodel/add/", {
+        response = self.client.post("/admin/auth/{model_slug}/add/".format(model_slug=model_slug), {
             "subject": "Foo bar 1",
         })
-        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
+        self.assertEqual(model.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)
-        obj = SubscribersTestAdminModel.objects.get(subject="Foo bar 1")
-        change_url = "/admin/auth/subscriberstestadminmodel/{pk}/".format(pk=obj.pk)
-        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
+        obj = model.objects.get(subject="Foo bar 1")
+        change_url = "/admin/auth/{model_slug}/{pk}/".format(model_slug=model_slug, pk=obj.pk)
+        self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         # Change and test again.
         response = self.client.post(change_url, {
             "subject": "Foo bar 2",
         })
         self.assertEqual(Subscriber.objects.count(), 0)
-        self.assertRedirects(response, "/admin/auth/subscriberstestadminmodel/")
-        self.assertEqual(SubscribersTestAdminModel.objects.count(), 1)
+        self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
+        self.assertEqual(model.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)
+        
+    def testCanStillSaveNormally(self):
+        self.assertCanStillSaveNormally(SubscribersTestAdminModel1)
+        
+    def testCanStillSaveNormallyStrPrimary(self):
+        self.assertCanStillSaveNormally(SubscribersTestAdminModel2)
         
         
 class UnsubscribeTest(TestCase):
