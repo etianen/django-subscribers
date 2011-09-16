@@ -613,6 +613,19 @@ class SubscribeFormTest(TestCase):
         self.assertEqual(subscriber.first_name, "Foo")
         self.assertEqual(subscriber.last_name, "Bar")
         
+    def testSubscribeByNameSingleWord(self):
+        response = self.client.post("/subscribers/subscribe/", {
+            "name": "Foo",
+            "email": "foo@bar.com",
+        })
+        self.assertRedirects(response, "/subscribers/subscribe/success/")
+        # Make sure the subscriber was created.
+        subscriber = Subscriber.objects.get()
+        self.assertEqual(subscriber.email, "foo@bar.com")
+        self.assertTrue(subscriber.is_subscribed, True)
+        self.assertEqual(subscriber.first_name, "Foo")
+        self.assertEqual(subscriber.last_name, "")
+        
     def testSubscribeByNameParts(self):
         response = self.client.post("/subscribers/subscribe/", {
             "first_name": "Foo",
