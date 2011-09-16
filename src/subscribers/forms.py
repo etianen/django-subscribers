@@ -37,7 +37,9 @@ class SubscribeForm(forms.Form):
         # Parse the name to get the first name and last name.
         name = self.cleaned_data.get("name", "")
         if name:
-            first_name, last_name = name.split(" ", 1)
+            name_parts = name.split(" ", 1)
+            first_name = len(name_parts) > 0 and name_parts[0] or ""
+            last_name = len(name_parts) > 1 and name_parts[1] or ""
             # Set these as defaults for the actual first and last name.
             cleaned_data["first_name"] = cleaned_data.get("first_name", "") or first_name
             cleaned_data["last_name"] = cleaned_data.get("last_name", "") or last_name
