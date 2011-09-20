@@ -120,6 +120,12 @@ class SubscriberTest(TestCase):
             # Delete the subscriber (cleanup).
             subscriber.delete()
             
+    def testEmailNormalization(self):
+        self.assertEqual(Subscriber.objects.count(), 0)
+        Subscriber.objects.subscribe(email="foo@bar.com")
+        Subscriber.objects.subscribe(email="FOO@bar.com")
+        self.assertEqual(Subscriber.objects.count(), 1)
+            
             
 class DispatchedEmailTest(TestCase):
 

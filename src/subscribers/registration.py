@@ -69,7 +69,7 @@ class EmailAdapter(object):
         template params.
         """
         try:
-            return self.get_host(obj, subscriber) + reverse("subscribers.views.unsubscribe", args=(
+            return reverse("subscribers.views.unsubscribe", args=(
                 ContentType.objects.get_for_model(obj).id,
                 obj.pk,
                 subscriber.pk,
@@ -86,7 +86,7 @@ class EmailAdapter(object):
         template params.
         """
         try:
-            return self.get_host(obj, subscriber) + reverse("subscribers.views.email_detail", args=(
+            return reverse("subscribers.views.email_detail", args=(
                 ContentType.objects.get_for_model(obj).id,
                 obj.pk,
                 subscriber.pk,
