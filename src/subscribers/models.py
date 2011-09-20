@@ -57,6 +57,7 @@ class SubscriberManager(models.Manager):
     def subscribe(self, email, first_name="", last_name="", is_subscribed=True, force_save=True):
         """Signs up the given subscriber."""
         needs_update = False
+        email = email.lower()
         # Get the subscriber.
         try:
             subscriber = self.get(email=email)
@@ -128,6 +129,12 @@ class Subscriber(models.Model):
             part for part in (self.first_name, self.last_name)
             if part
         )
+    
+    def clean(self):
+        """Cleans the model fields."""
+        super(Subscriber, self).clean()
+        # Normalise the email address.
+        self.email = self.email.lower()
     
     def __unicode__(self):
         """Returns the email string for this address."""
