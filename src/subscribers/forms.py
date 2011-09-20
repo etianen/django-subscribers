@@ -80,7 +80,10 @@ class ImportFromCsvForm(forms.Form):
                 clean_rows = []
                 invalid_rows = []
                 for lineno, row in enumerate(reader, 1):
-                    row_data = dict(zip(headers, row))
+                    try:
+                        row_data = dict(zip(headers, row))
+                    except IndexError:
+                        invalid_rows.append((lineno, row_data))
                     row_form = SubscribeForm(row_data)
                     if row_form.is_valid():
                         clean_rows.append(row_form.cleaned_data)

@@ -1,6 +1,6 @@
 """Tests for the django-subscribers application."""
 
-import datetime
+import datetime, cStringIO, os.path
 
 from django.db import models		
 from django.test import TestCase
@@ -256,6 +256,9 @@ class AdminTestBase(TestCase):
         self.client.login(username="foo", password="bar")
 
 
+TEST_DIR = os.path.dirname(__file__)
+
+
 class SubscriberAdminTest(AdminTestBase):
 
     def setUp(self):
@@ -330,6 +333,33 @@ class SubscriberAdminTest(AdminTestBase):
         })
         self.assertRedirects(response, "/admin/subscribers/subscriber/")
         self.assertEqual(list(Subscriber.objects.get(id=self.subscriber.id).mailing_lists.all()), [])
+        
+    def testImportFromCSV(self):
+        # Make sure that the form renders.
+        response = self.client.get("/admin/subscribers/subscriber/import/")
+        self.assertEqual(response.status_code, 200)
+        # Try importing a one-column CSV.
+        self.assertEqual(Subscriber.objects.count(), 1)
+        with open(os.path.join(TEST_DIR, "import-1-col.csv"), "rb") as csv_handle:
+            response = self.client.post("/admin/subscribers/subscriber/import/", {
+                "file": csv_handle,
+            })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(Subscriber.objects.count(), 2)
+        # Try importing a two-column CSV.
+        with open(os.path.join(TEST_DIR, "import-2-col.csv"), "rb") as csv_handle:
+            response = self.client.post("/admin/subscribers/subscriber/import/", {
+                "file": csv_handle,
+            })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(Subscriber.objects.count(), 4)
+        # Try importing a multi-column CSV.
+        with open(os.path.join(TEST_DIR, "import-multi-col.csv"), "rb") as csv_handle:
+            response = self.client.post("/admin/subscribers/subscriber/import/", {
+                "file": csv_handle,
+            })
+        self.assertRedirects(response, "/admin/subscribers/subscriber/")
+        self.assertEqual(Subscriber.objects.count(), 6)
 
 
 class MailingListAdminTest(AdminTestBase):
