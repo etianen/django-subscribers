@@ -15,3 +15,11 @@
         <input type="submit" name="_saveandsend" value="Send"/>
     </div>
 {% endblock %}
+
+
+{% block object-tools-items %}
+    {{block.super}}
+    {% if user.email %}
+        <li><a href="preview/" target="_blank" class="viewsitelink">Preview</a></li>
+    {% endif %}
+{% endblock %}

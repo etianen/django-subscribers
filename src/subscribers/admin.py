@@ -8,8 +8,8 @@ from django.conf.urls.defaults import patterns, url
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.db import transaction
-from django.shortcuts import redirect, render
-from django.http import HttpResponse
+from django.shortcuts import redirect, render, get_object_or_404
+from django.http import HttpResponse, Http404
 
 from subscribers.forms import ImportFromCsvForm
 from subscribers.models import Subscriber, MailingList, has_int_pk
@@ -416,3 +416,32 @@ class EmailAdmin(VersionAdminBase):
         """Renders the change form."""
         context["send_to_options"] = MailingList.objects.all()
         return super(EmailAdmin, self).render_change_form(request, context, *args, **kwargs)
+    
+    def get_urls(self):
+        urlpatterns = super(EmailAdmin, self).get_urls()
+        urlpatterns = patterns("",
+            url("^([^/]+)/preview/", self.admin_site.admin_view(self.preview_view), name="{app_label}_{model_name}_preview".format(
+                app_label = self.model._meta.app_label,
+                model_name = self.model.__name__.lower(),
+            )),
+        ) + urlpatterns
+        return urlpatterns
+    
+    def preview_view(self, request, object_id):
+        email = get_object_or_404(self.model, pk=object_id)
+        adapter = self.email_manager.get_adapter(self.model)
+        user = request.user
+        if user.email:
+            subscriber = Subscriber.objects.subscribe(
+                email = user.email,
+                first_name = user.first_name,
+                last_name = user.last_name,
+                force_save = False,
+            )
+            content = adapter.get_content_html(email, subscriber)
+            response = HttpResponse(content)
+            response["Content-Type"] = "text/html; charset=utf-8"
+            response["Content-Length"] = str(len(content))
+            return response
+        else:
+            raise Http404("Active user does not have an email address.")

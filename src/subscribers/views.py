@@ -7,7 +7,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 
 from subscribers.forms import SubscribeForm
-from subscribers.models import DispatchedEmail, Subscriber, STATUS_PENDING
+from subscribers.models import Subscriber, STATUS_PENDING
 from subscribers.registration import default_email_manager
 
 
