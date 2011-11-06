@@ -424,6 +424,10 @@ class EmailAdmin(VersionAdminBase):
                 app_label = self.model._meta.app_label,
                 model_name = self.model.__name__.lower(),
             )),
+            url("^([^/]+)/preview-txt/", self.admin_site.admin_view(self.preview_txt_view), name="{app_label}_{model_name}_preview_txt".format(
+                app_label = self.model._meta.app_label,
+                model_name = self.model.__name__.lower(),
+            )),
         ) + urlpatterns
         return urlpatterns
     
@@ -441,7 +445,24 @@ class EmailAdmin(VersionAdminBase):
             content = adapter.get_content_html(email, subscriber)
             response = HttpResponse(content)
             response["Content-Type"] = "text/html; charset=utf-8"
-            response["Content-Length"] = str(len(content))
+            return response
+        else:
+            raise Http404("Active user does not have an email address.")
+        
+    def preview_txt_view(self, request, object_id):
+        email = get_object_or_404(self.model, pk=object_id)
+        adapter = self.email_manager.get_adapter(self.model)
+        user = request.user
+        if user.email:
+            subscriber = Subscriber.objects.subscribe(
+                email = user.email,
+                first_name = user.first_name,
+                last_name = user.last_name,
+                force_save = False,
+            )
+            content = adapter.get_content(email, subscriber)
+            response = HttpResponse(content)
+            response["Content-Type"] = "text/plain; charset=utf-8"
             return response
         else:
             raise Http404("Active user does not have an email address.")
