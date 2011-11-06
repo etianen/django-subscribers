@@ -4,6 +4,8 @@ import csv, re
 
 from django import forms
 
+from subscribers.models import MailingList
+
 
 class SubscribeForm(forms.Form):
 
@@ -29,6 +31,16 @@ class SubscribeForm(forms.Form):
     
     email = forms.EmailField(
         required = True,
+    )
+    
+    redirect = forms.CharField(
+        required = False,
+        widget = forms.HiddenInput,
+    )
+    
+    mailing_list = forms.ModelMultipleChoiceField(
+        required = False,
+        queryset = MailingList.objects.all(),
     )
     
     def clean(self):

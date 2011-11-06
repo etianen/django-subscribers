@@ -26,11 +26,16 @@ def subscribe(request, form_cls=SubscribeForm, template_name="subscribers/subscr
         form = form_cls(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            Subscriber.objects.subscribe(
+            subscriber = Subscriber.objects.subscribe(
                 email = data["email"],
                 first_name = data["first_name"],
                 last_name = data["last_name"],
             )
+            # Sign up to any mailing lists.
+            subscriber.mailing_lists.add(*data["mailing_list"])
+            # Redirect.
+            if data["redirect"]:
+                return redirect(data["redirect"])
             return redirect("subscribers.views.subscribe_success")
     else:
         form = form_cls
