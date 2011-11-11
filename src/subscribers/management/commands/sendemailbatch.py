@@ -47,8 +47,8 @@ class Command(BaseCommand):
             sent_today_count = DispatchedEmail.objects.filter(
                 manager_slug = default_email_manager._manager_slug,
                 status = STATUS_SENT,
-                date_modified__gte = day_start,
-                date_modified__lte = day_end,
+                date_sent__gte = day_start,
+                date_sent__lte = day_end,
             ).count()
             quota_remaining = max(0, daily_limit - sent_today_count)
             if batch_size is None:
