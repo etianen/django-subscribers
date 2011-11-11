@@ -266,11 +266,18 @@ def allow_save_and_send(func):
     """Decorator that enables save and send on an admin view."""
     @wraps(func)
     def do_allow_save_and_send(admin_cls, request, obj, *args, **kwargs):
-        error_redirect = redirect("{site}:{app}_{model}_change".format(
-            site = admin_cls.admin_site.name,
-            app = obj._meta.app_label,
-            model = obj.__class__.__name__.lower(),
-        ), obj.pk)
+        def make_error_redirect(warning=None):
+            admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully.".format(
+                    model = obj._meta.verbose_name,
+                    obj = obj,
+                ))
+            if warning:
+                messages.warning(request, warning)
+            return redirect("{site}:{app}_{model}_change".format(
+                site = admin_cls.admin_site.name,
+                app = obj._meta.app_label,
+                model = obj.__class__.__name__.lower(),
+            ), obj.pk)
         if "_saveandsend" in request.POST:
             # Get the default list of subscribers.
             subscribers = Subscriber.objects.filter(
@@ -279,14 +286,9 @@ def allow_save_and_send(func):
             # Try filtering by mailing list.
             send_to = request.POST["_send_to"]
             if send_to == "_nobody":
-                admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully.".format(
-                    model = obj._meta.verbose_name,
-                    obj = obj,
-                ))
-                messages.warning(request, u"Please select a mailing list to send this {model} to.".format(
+                return make_error_redirect(u"Please select a mailing list to send this {model} to.".format(
                     model = obj._meta.verbose_name,
                 ))
-                return error_redirect
             elif send_to == "_all":
                 pass
             else:
@@ -303,23 +305,21 @@ def allow_save_and_send(func):
                     else:
                         break
                 if send_on_date is None:
-                    messages.warning(request, u"Your date format was incorrect, so the email was not sent.")
-                    return error_redirect
+                    return make_error_redirect(u"Your date format was incorrect, so the email was not sent.")
             else:
                 send_on_date = datetime.datetime.now().date()
             # Get the send time.
             if request.POST["_send_on_time"]:
-                send_on_date = None
+                send_on_time = None
                 for format in formats.get_format("TIME_INPUT_FORMATS"):
                     try:
-                        send_on_time = datetime.time(*time.strptime(request.POST["_send_on_time"], format)[:3])
+                        send_on_time = datetime.time(*time.strptime(request.POST["_send_on_time"], format)[3:6])
                     except ValueError:
                         pass
                     else:
                         break
                 if send_on_time is None:
-                    messages.warning(request, u"Your time format was incorrect, so the email was not sent.")
-                    return error_redirect
+                    return make_error_redirect(u"Your time format was incorrect, so the email was not sent.")
             else:
                 send_on_time = datetime.datetime.now().time()
             # Get the send datetime.
