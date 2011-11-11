@@ -45,6 +45,7 @@ class Command(BaseCommand):
             day_start = datetime.datetime(today.year, today.month, today.day, 0, 0, 0)
             day_end = datetime.datetime(today.year, today.month, today.day, 23, 59, 59)
             sent_today_count = DispatchedEmail.objects.filter(
+                manager_slug = default_email_manager._manager_slug,
                 status = STATUS_SENT,
                 date_modified__gte = day_start,
                 date_modified__lte = day_end,
