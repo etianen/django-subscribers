@@ -41,7 +41,7 @@ class Migration(SchemaMigration):
         db.create_table('subscribers_dispatchedemail', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('date_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
+            ('date_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, db_index=True, blank=True)),
             ('manager_slug', self.gf('django.db.models.fields.CharField')(max_length=200, db_index=True)),
             ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['contenttypes.ContentType'])),
             ('object_id', self.gf('django.db.models.fields.TextField')()),
@@ -80,7 +80,7 @@ class Migration(SchemaMigration):
             'Meta': {'ordering': "('id',)", 'object_name': 'DispatchedEmail'},
             'content_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['contenttypes.ContentType']"}),
             'date_created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
-            'date_modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
+            'date_modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'db_index': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'manager_slug': ('django.db.models.fields.CharField', [], {'max_length': '200', 'db_index': 'True'}),
             'object_id': ('django.db.models.fields.TextField', [], {}),
@@ -106,6 +106,19 @@ class Migration(SchemaMigration):
             'is_subscribed': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'blank': 'True'}),
             'mailing_lists': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['subscribers.MailingList']", 'symmetrical': 'False', 'blank': 'True'})
+        },
+        'watson.searchentry': {
+            'Meta': {'object_name': 'SearchEntry'},
+            'content': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
+            'content_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['contenttypes.ContentType']"}),
+            'description': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
+            'engine_slug': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '200', 'db_index': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'meta_encoded': ('django.db.models.fields.TextField', [], {}),
+            'object_id': ('django.db.models.fields.TextField', [], {}),
+            'object_id_int': ('django.db.models.fields.IntegerField', [], {'db_index': 'True', 'null': 'True', 'blank': 'True'}),
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '1000'}),
+            'url': ('django.db.models.fields.CharField', [], {'max_length': '1000', 'blank': 'True'})
         }
     }
 
