@@ -483,6 +483,8 @@ class EmailAdminTest(AdminTestBase):
             "subject": "Foo bar 1",
             "_saveandsend": "1",
             "_send_to": "_nobody",
+            "_send_on_date": "",
+            "_send_on_time": "",
         })
         self.assertRedirects(response, change_url)
         self.assertEqual(len(subscribers.send_email_batch()), 0)
@@ -492,6 +494,8 @@ class EmailAdminTest(AdminTestBase):
             "subject": "Foo bar 1",
             "_saveandsend": "1",
             "_send_to": mailing_list.pk,
+            "_send_on_date": "",
+            "_send_on_time": "",
         })
         self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 0)
@@ -504,6 +508,8 @@ class EmailAdminTest(AdminTestBase):
             "subject": "Foo bar 1",
             "_saveandsend": "1",
             "_send_to": mailing_list.pk,
+            "_send_on_date": "",
+            "_send_on_time": "",
         })
         self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 1)
@@ -513,6 +519,8 @@ class EmailAdminTest(AdminTestBase):
             "subject": "Foo bar 1",
             "_saveandsend": "1",
             "_send_to": "_all",
+            "_send_on_date": "",
+            "_send_on_time": "",
         })
         self.assertRedirects(response, "/admin/auth/{model_slug}/".format(model_slug=model_slug))
         self.assertEqual(len(subscribers.send_email_batch()), 1)

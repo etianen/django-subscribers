@@ -1,5 +1,6 @@
 """Adapters for registering models with django-subscribers."""
 
+import datetime
 from weakref import WeakValueDictionary
 from contextlib import closing
 
@@ -276,9 +277,10 @@ class EmailManager(object):
         
     # Dispatching email.
     
-    def dispatch_email(self, obj, subscriber):
+    def dispatch_email(self, obj, subscriber, date_to_send=None):
         """Sends an email to the given subscriber."""
         self._assert_registered(obj.__class__)
+        date_to_send = date_to_send or datetime.datetime.now()
         # Determine the integer object id.
         if has_int_pk(obj):
             object_id_int = int(obj.pk)
@@ -291,6 +293,7 @@ class EmailManager(object):
             object_id = unicode(obj.pk),
             object_id_int = object_id_int,
             subscriber = subscriber,
+            date_to_send = date_to_send,
         )
         
     def send_email_batch_iter(self, batch_size=None):
@@ -303,6 +306,7 @@ class EmailManager(object):
         # Look up the emails to send.
         dispatched_emails = DispatchedEmail.objects.filter(
             manager_slug = self._manager_slug,
+            date_to_send__lte = datetime.datetime.now(),
             status = STATUS_PENDING,
         ).select_related("subscriber")
         if batch_size is not None:
@@ -336,6 +340,7 @@ class EmailManager(object):
                     else:
                         dispatched_email.status = STATUS_UNSUBSCRIBED
                     # Save the result.
+                    dispatched_email.date_sent = datetime.datetime.now()
                     dispatched_email.save()
                     yield dispatched_email
     

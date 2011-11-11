@@ -1,6 +1,6 @@
 """Admin integration for subscribers."""
 
-import csv, cStringIO
+import csv, cStringIO, datetime, time
 from functools import partial, wraps
 
 from django.conf import settings
@@ -10,6 +10,7 @@ from django.db.models import Count
 from django.db import transaction
 from django.shortcuts import redirect, render, get_object_or_404
 from django.http import HttpResponse, Http404
+from django.utils import formats
 
 from subscribers.forms import ImportFromCsvForm
 from subscribers.models import Subscriber, MailingList, has_int_pk
@@ -265,6 +266,11 @@ def allow_save_and_send(func):
     """Decorator that enables save and send on an admin view."""
     @wraps(func)
     def do_allow_save_and_send(admin_cls, request, obj, *args, **kwargs):
+        error_redirect = redirect("{site}:{app}_{model}_change".format(
+            site = admin_cls.admin_site.name,
+            app = obj._meta.app_label,
+            model = obj.__class__.__name__.lower(),
+        ), obj.pk)
         if "_saveandsend" in request.POST:
             # Get the default list of subscribers.
             subscribers = Subscriber.objects.filter(
@@ -280,16 +286,44 @@ def allow_save_and_send(func):
                 messages.warning(request, u"Please select a mailing list to send this {model} to.".format(
                     model = obj._meta.verbose_name,
                 ))
-                return redirect("{site}:{app}_{model}_change".format(
-                    site = admin_cls.admin_site.name,
-                    app = obj._meta.app_label,
-                    model = obj.__class__.__name__.lower(),
-                ), obj.pk)
+                return error_redirect
             elif send_to == "_all":
                 pass
             else:
                 mailing_list = MailingList.objects.get(id=send_to)
                 subscribers = subscribers.filter(mailing_lists=mailing_list)
+            # Get the send date.
+            if request.POST["_send_on_date"]:
+                send_on_date = None
+                for format in formats.get_format("DATE_INPUT_FORMATS"):
+                    try:
+                        send_on_date = datetime.date(*time.strptime(request.POST["_send_on_date"], format)[:3])
+                    except ValueError:
+                        pass
+                    else:
+                        break
+                if send_on_date is None:
+                    messages.warning(request, u"Your date format was incorrect, so the email was not sent.")
+                    return error_redirect
+            else:
+                send_on_date = datetime.datetime.now().date()
+            # Get the send time.
+            if request.POST["_send_on_time"]:
+                send_on_date = None
+                for format in formats.get_format("TIME_INPUT_FORMATS"):
+                    try:
+                        send_on_time = datetime.time(*time.strptime(request.POST["_send_on_time"], format)[:3])
+                    except ValueError:
+                        pass
+                    else:
+                        break
+                if send_on_time is None:
+                    messages.warning(request, u"Your time format was incorrect, so the email was not sent.")
+                    return error_redirect
+            else:
+                send_on_time = datetime.datetime.now().time()
+            # Get the send datetime.
+            send_on_datetime = datetime.datetime.combine(send_on_date, send_on_time)
             # Calculate potential subscriber count.    
             potential_subscriber_count = subscribers.count()
             # Exclude subscribers who have already received the email.
@@ -306,9 +340,9 @@ def allow_save_and_send(func):
             subscriber_count = 0
             for subscriber in subscribers_to_send.iterator():
                 subscriber_count += 1
-                admin_cls.email_manager.dispatch_email(obj, subscriber)
+                admin_cls.email_manager.dispatch_email(obj, subscriber, send_on_datetime)
             # Message the user.
-            admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. An email was sent to {count} subscriber{pluralize}.".format(
+            admin_cls.message_user(request, u"The {model} \"{obj}\" was saved successfully. An email will be sent to {count} subscriber{pluralize}.".format(
                 model = obj._meta.verbose_name,
                 obj = obj,
                 count = subscriber_count,
@@ -466,3 +500,9 @@ class EmailAdmin(VersionAdminBase):
             return response
         else:
             raise Http404("Active user does not have an email address.")
+        
+    class Media:
+        js = (
+            settings.ADMIN_MEDIA_PREFIX + "js/calendar.js",
+            settings.ADMIN_MEDIA_PREFIX + "js/admin/DateTimeShortcuts.js",
+        )

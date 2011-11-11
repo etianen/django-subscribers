@@ -41,7 +41,8 @@ class Migration(SchemaMigration):
         db.create_table('subscribers_dispatchedemail', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('date_modified', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, db_index=True, blank=True)),
+            ('date_to_send', self.gf('django.db.models.fields.DateTimeField')(db_index=True)),
+            ('date_sent', self.gf('django.db.models.fields.DateTimeField')(db_index=True, null=True, blank=True)),
             ('manager_slug', self.gf('django.db.models.fields.CharField')(max_length=200, db_index=True)),
             ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['contenttypes.ContentType'])),
             ('object_id', self.gf('django.db.models.fields.TextField')()),
@@ -80,14 +81,15 @@ class Migration(SchemaMigration):
             'Meta': {'ordering': "('id',)", 'object_name': 'DispatchedEmail'},
             'content_type': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['contenttypes.ContentType']"}),
             'date_created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
-            'date_modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'db_index': 'True', 'blank': 'True'}),
+            'date_sent': ('django.db.models.fields.DateTimeField', [], {'db_index': 'True', 'null': 'True', 'blank': 'True'}),
+            'date_to_send': ('django.db.models.fields.DateTimeField', [], {'db_index': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'manager_slug': ('django.db.models.fields.CharField', [], {'max_length': '200', 'db_index': 'True'}),
             'object_id': ('django.db.models.fields.TextField', [], {}),
             'object_id_int': ('django.db.models.fields.IntegerField', [], {'db_index': 'True', 'null': 'True', 'blank': 'True'}),
-            'subscriber': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['subscribers.Subscriber']"}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'db_index': 'True'}),
-            'status_message': ('django.db.models.fields.TextField', [], {'blank': 'True'})
+            'status_message': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
+            'subscriber': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['subscribers.Subscriber']"})
         },
         'subscribers.mailinglist': {
             'Meta': {'ordering': "('name',)", 'object_name': 'MailingList'},

@@ -182,9 +182,14 @@ class DispatchedEmail(models.Model):
         auto_now_add = True,
     )
     
-    date_modified = models.DateTimeField(
-        auto_now = True,
+    date_to_send = models.DateTimeField(
         db_index = True,
+    )
+    
+    date_sent = models.DateTimeField(
+        db_index = True,
+        blank = True,
+        null = True,
     )
     
     manager_slug = models.CharField(
