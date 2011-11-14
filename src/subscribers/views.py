@@ -5,6 +5,7 @@ from functools import wraps
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.dispatch import Signal
 
 from subscribers.forms import SubscribeForm
 from subscribers.models import Subscriber, STATUS_PENDING
@@ -20,6 +21,10 @@ def _patch_context(context, extra_context):
             context[name] = value
 
 
+# Signal sent whenever someone subscribes using the online form.
+post_subscribe = Signal()
+
+
 def subscribe(request, form_cls=SubscribeForm, template_name="subscribers/subscribe.html", extra_context=None):
     """Handles the subscribe success workflow."""
     if request.method == "POST":
@@ -33,6 +38,8 @@ def subscribe(request, form_cls=SubscribeForm, template_name="subscribers/subscr
             )
             # Sign up to any mailing lists.
             subscriber.mailing_lists.add(*data["mailing_list"])
+            # Signal.
+            post_subscribe.send(subscriber)
             # Redirect.
             if data["redirect"]:
                 return redirect(data["redirect"])
