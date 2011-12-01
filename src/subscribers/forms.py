@@ -91,7 +91,8 @@ class ImportFromCsvForm(forms.Form):
                 # Go through the rest of the CSV file.
                 clean_rows = []
                 invalid_rows = []
-                for lineno, row in enumerate(reader, 1):
+                for lineno, row in enumerate(reader, 2):
+                    row = [cell.decode("utf-8", "ignore").strip() for cell in row]
                     try:
                         row_data = dict(zip(headers, row))
                     except IndexError:
@@ -100,6 +101,7 @@ class ImportFromCsvForm(forms.Form):
                     if row_form.is_valid():
                         clean_rows.append(row_form.cleaned_data)
                     else:
+                        print row_form.errors
                         invalid_rows.append((lineno, row_data))
             except csv.Error:
                 raise forms.ValidationError("Please upload a valid CSV file.")
