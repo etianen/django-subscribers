@@ -9,12 +9,12 @@ urlpatterns = patterns("subscribers.views",
     
     url("^subscribe/success/$", "subscribe_success", name="subscribe_success"),
 
-    url("^unsubscribe/([^-]+)-([^-]+)-([^-]+)-([^/]+)/$", "unsubscribe", name="unsubscribe"),
+    url("^unsubscribe/(\d+)-([^-]+)-(\d+)-([^/]+)/$", "unsubscribe", name="unsubscribe"),
     
-    url("^unsubscribe/([^-]+)-([^-]+)-([^-]+)-([^/]+)/success/$", "unsubscribe_success", name="unsubscribe_success"),
+    url("^unsubscribe/(\d+)-([^-]+)-(\d+)-([^/]+)/success/$", "unsubscribe_success", name="unsubscribe_success"),
     
-    url("^([^-]+)-([^-]+)-([^-]+)-([^/]+)/$", "email_detail", name="email_detail"),
+    url("^(\d+)-([^-]+)-(\d+)-([^/]+)/$", "email_detail", name="email_detail"),
     
-    url("^([^-]+)-([^-]+)-([^-]+)-([^/]+)/txt/$", "email_detail_txt", name="email_detail_txt"),
+    url("^(\d+)-([^-]+)-(\d+)-([^/]+)/txt/$", "email_detail_txt", name="email_detail_txt"),
 
 )
