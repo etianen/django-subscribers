@@ -423,17 +423,9 @@ class EmailAdmin(VersionAdminBase):
         if not self.email_manager.is_registered(self.model):
             self.email_manager.register(self.model)
     
-    def queryset(self, request):
-        """Returns the queryset to use for displaying the change list."""
-        qs = super(EmailAdmin, self).queryset(request)
-        qs = qs.annotate(
-            subscriber_count = Count("dispatchedemail_set"),
-        )
-        return qs
-    
     def get_subscriber_count(self, obj):
         """Returns the number of subscribers who have received this email."""
-        return obj.subscriber_count
+        return obj.dispatchedemail_set.count()
     get_subscriber_count.short_description = "Recipients"
     
     @allow_save_and_send
