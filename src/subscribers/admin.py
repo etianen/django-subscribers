@@ -495,6 +495,6 @@ class EmailAdmin(VersionAdminBase):
         
     class Media:
         js = (
-            settings.ADMIN_MEDIA_PREFIX + "js/calendar.js",
-            settings.ADMIN_MEDIA_PREFIX + "js/admin/DateTimeShortcuts.js",
+            settings.STATIC_URL + "js/calendar.js",
+            settings.STATIC_URL + "js/admin/DateTimeShortcuts.js",
         )
