@@ -446,11 +446,11 @@ class EmailAdmin(VersionAdminBase):
     def get_urls(self):
         urlpatterns = super(EmailAdmin, self).get_urls()
         urlpatterns = patterns("",
-            url("^([^/]+)/preview/", self.admin_site.admin_view(self.preview_view), name="{app_label}_{model_name}_preview".format(
+            url("^([^/]+)/preview/$", self.admin_site.admin_view(self.preview_view), name="{app_label}_{model_name}_preview".format(
                 app_label = self.model._meta.app_label,
                 model_name = self.model.__name__.lower(),
             )),
-            url("^([^/]+)/preview-txt/", self.admin_site.admin_view(self.preview_txt_view), name="{app_label}_{model_name}_preview_txt".format(
+            url("^([^/]+)/preview-txt/$", self.admin_site.admin_view(self.preview_txt_view), name="{app_label}_{model_name}_preview_txt".format(
                 app_label = self.model._meta.app_label,
                 model_name = self.model.__name__.lower(),
             )),
