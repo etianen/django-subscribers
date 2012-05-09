@@ -3,7 +3,7 @@
 from functools import wraps
 
 from django.contrib.contenttypes.models import ContentType
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.dispatch import Signal
 
@@ -43,7 +43,11 @@ def subscribe(request, form_cls=SubscribeForm, template_name="subscribers/subscr
             # Redirect.
             if data["redirect"]:
                 return redirect(data["redirect"])
+            if request.is_ajax():
+                return HttpResponse("Subscription complete.")
             return redirect("subscribers.views.subscribe_success")
+        elif request.is_ajax():
+            return HttpResponseBadRequest("Invalid email address.")
     else:
         form = form_cls
     # Render the template.
