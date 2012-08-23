@@ -1,2 +1,2 @@
-recursive-include src/cms *.html *.htm *.txt *.png *.jpg *.gif *.css *.js
+recursive-include src/subscribers *.html *.htm *.txt *.png *.jpg *.gif *.css *.js
 include README.md
