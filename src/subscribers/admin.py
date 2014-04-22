@@ -4,7 +4,6 @@ import csv, cStringIO, datetime, time
 from functools import partial, wraps
 
 from django.conf import settings
-from django.conf.urls.defaults import patterns, url
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.db import transaction
@@ -15,6 +14,12 @@ from django.utils import formats
 from subscribers.forms import ImportFromCsvForm
 from subscribers.models import Subscriber, MailingList, has_int_pk
 from subscribers.registration import default_email_manager
+
+# Try to import the URL functions
+try:
+    from django.conf.urls.defaults import patterns, url
+except ImportError:
+    from django.conf.urls import patterns, url
 
 
 # Mix in watson search, if available.
